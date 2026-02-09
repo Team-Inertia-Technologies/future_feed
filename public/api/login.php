@@ -3,6 +3,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../includes/common_api.php";
+require_once "../../vendor/autoload.php";
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
@@ -38,8 +39,6 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
             ]);
             exit;
         }
-        
-        require_once '../../vendor/autoload.php';
         
         // Your Google Client ID
         $googleClientId = '856248388214-8obo2cg3s0i59cc1e1btsqi4vfhnrppg.apps.googleusercontent.com';
