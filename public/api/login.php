@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
         require_once '../vendor/autoload.php';
         
         // Your Google Client ID
-        $googleClientId = '856248388214-ftcbv7nfm7cjr8j8c4kdsiuocsin3o5k.apps.googleusercontent.com';
+        $googleClientId = '856248388214-8obo2cg3s0i59cc1e1btsqi4vfhnrppg.apps.googleusercontent.com';
         
         $client = new Google_Client(['client_id' => $googleClientId]);
         
