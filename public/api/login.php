@@ -4,165 +4,263 @@ ini_set('display_errors', 1);
 $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../includes/common_api.php";
 
-if (true) {
-    if ($_SERVER['REQUEST_METHOD'] == "POST") {
-        ####################################################################################
-        // First, make sure the form was posted from a browser.
-        // For basic web-forms, we don't care about anything  other than requests from a browser:    
-        if (!isset($_SERVER['HTTP_USER_AGENT']))
-            ForceOut(5);
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 
-        // Make sure the form was indeed POST'ed: (requires your html form to use: action="post") 
-        if (!$_SERVER['REQUEST_METHOD'] == "POST")
-            ForceOut(5);
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
-        #########################################################################################  
-        if (isset($_POST["txtemail"]) && isset($_POST["txtpassword"])) //  && isset($_POST["type"]) && isset($_POST["btnlogin"]))
-        {
-            $username = db_input($_POST["txtemail"]);
-            $txtpassword = htmlspecialchars_decode(db_input2($_POST["txtpassword"]));
-            //echo $txtpassword;
-            // $salt_obj = new SaltIT;
-            // $txtpassword = $salt_obj->EnCode($txtpassword);
-            // echo $txtpassword;
-            // $ret = 0; //error flag
-
-            if ($txtpassword == '') {
-                session_destroy();
-                $response = array(
-                    "error" => array(
-                        "message" => "password cannot be blank",
-                    ),
-                    "statusCode" => 400,
-                );
-                http_response_code(400);
-                header('Content-Type: application/json');
-                echo json_encode($response);
-                exit;
-            } elseif ($username == '') {
-                session_destroy();
-                $response = array(
-                    "error" => array(
-                        "message" => "Email cannot be blank",
-                    ),
-                    "statusCode" => 400,
-                );
-                http_response_code(400);
-                header('Content-Type: application/json');
-                echo json_encode($response);
-                exit;
-            } else {
-                $u_id = 0;
-                $q = "select iUserID, vName, vPassword from user where vEmail='" . $username . "' and cStatus='A'";
-                $r = sql_query($q, 'AUTH.61');
-                if (sql_num_rows($r)) {
-                    list($u_id, $u_name, $u_pass) = sql_fetch_row($r);
-                    $u_pass = htmlspecialchars_decode($u_pass);
-                    $ret = ($u_pass == ($txtpassword)) ? 1 : -1; // 1 - txtpassword Matches ::  -1 - txtpassword MisMatch
-                    /* echo $u_pass.'<br>'.$txtpassword; exit; */
-                } else
-                    $ret = -2;    //No User Found
-
-                if ($ret == 3) {
-                    session_destroy();
-                    $response = array(
-                        "error" => array(
-                            "message" => "Login Failed",
-                        ),
-                        "statusCode" => 400,
-                    );
-                    http_response_code(400);
-                    header('Content-Type: application/json');
-                    echo json_encode($response);
-                    exit;
-                } elseif ($ret == -1 || $ret == -2) {
-                    LogAttempt($username, 'F', 'Wrong User Name');
-                    session_destroy();
-                    $response = array(
-                        "error" => array(
-                            "message" => "Wrong User Name",
-                        ),
-                        "statusCode" => 400,
-                    );
-                    http_response_code(400);
-                    header('Content-Type: application/json');
-                    echo json_encode($response);
-                    exit;
-                } elseif ($ret == 1) {
-                    session_destroy();
-                    session_start();
-                    session_regenerate_id();
-                    ${PROJ_SESSION_ID} = new userdat;
-
-                    $randomtoken = base64_encode(uniqid(rand(), true));
-
-                    $_SESSION[PROJ_SESSION_ID] = new userdat;
-                    $_SESSION[PROJ_SESSION_ID]->log_time = NOW2;
-                    $_SESSION[PROJ_SESSION_ID]->log_stat = "A";
-                    $_SESSION[PROJ_SESSION_ID]->user_id = $u_id;
-                    $_SESSION[PROJ_SESSION_ID]->user_name = $u_name;
-                    $_SESSION[PROJ_SESSION_ID]->sess = session_id();
-                    $_SESSION[PROJ_SESSION_ID]->rmadr = $_SERVER['REMOTE_ADDR'];
-                    $_SESSION[PROJ_SESSION_ID]->lhs_menu = true;
-                    $_SESSION[PROJ_SESSION_ID]->sess_token = $randomtoken;
-                    $_SESSION[PROJ_SESSION_ID]->sess_active = 'Y';
-                    $_SESSION[PROJ_SESSION_ID]->allow_vessel_close = 'N';
-
-                    LogAttempt($username, 'S', 'Logged');
-
-                    $q = "update user set cActive='Y', dtLastLogin='" . NOW . "', vLastLoginIP='" . $_SERVER['REMOTE_ADDR'] . "' where iUserID=$u_id";
-                    $r = sql_query($q, 'AUTH.78');
-                    $token = EncodeParam($u_id);
-
-
-                    // $URL = 'home.php';
-                    //$URL2 = GetXFromYID('select vUrl from menu as m join user_role_access as ua on m.iMenuID=ua.iMenuID where m.cStatus="A" and ua.cStatus="A" and m.iModuleID=1 and ua.iModuleID=1 and ua.cPrimary="Y" and ua.iUserID='.$u_id);
-                    //if (!empty($URL2) && $URL2 != '-1') $URL = $URL2;
-
-                    //SELECT `iLYTPID`, `dtEntry`, `iUserID`, `vPassword`, `cIsTemp`, `cStatus` FROM `log_user_temppassword` WHERE 1
-                    // $IS_SALE_DASHBOARD = GetXFromYID('select count(*) from module_level_assoc where iModuleID=57 and cType="BL" and iLevelD='.$u_level);
-                    // if(!empty($IS_SALE_DASHBOARD) && $IS_SALE_DASHBOARD!='-1')
-                    // 	$URL = 'home2.php';
-                    $NOW = NOW;
-                    $response = array(
-                        "data" => array(
-                            "token" => $token,
-                            "userName" => $u_name
-                        ),
-                        "statusCode" => 200,
-                    );
-                    http_response_code(200);
-                    header('Content-Type: application/json');
-                    echo json_encode($response);
-                    exit;
-                }
-            }
-        } else
-            session_destroy();
-        $response = array(
-            "error" => array(
-                "message" => "Login Failed",
-            ),
-            "statusCode" => 400,
-        );
-        http_response_code(400);
-        header('Content-Type: application/json');
-        echo json_encode($response);
-        exit;
-    } else {
-        session_destroy(); // destroy all data in session
-        $response = array('statusCode' => 403, 'message' => "Forbidden - You are not authorized to view this page",);
-        http_response_code(403);
-        header('Content-Type: application/json');
-        echo json_encode($response);
-        exit;
+if ($_SERVER['REQUEST_METHOD'] == "POST") {
+    
+    $request = json_decode(file_get_contents("php://input"), true);
+    
+    if (!$request) {
+        $request = $_POST;
     }
+    
+    $loginType = $request['login_type'] ?? 'email';
+    
+    // ============================================
+    // GOOGLE SSO LOGIN
+    // ============================================
+    if ($loginType === 'google') {
+        
+        if (empty($request['google_token'])) {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "statusCode" => 400,
+                "error" => ["message" => "Google token is required"]
+            ]);
+            exit;
+        }
+        
+        require_once '../vendor/autoload.php';
+        
+        // Your Google Client ID
+        $googleClientId = '856248388214-ftcbv7nfm7cjr8j8c4kdsiuocsin3o5k.apps.googleusercontent.com';
+        
+        $client = new Google_Client(['client_id' => $googleClientId]);
+        
+        try {
+            // Verify the token sent from frontend
+            $payload = $client->verifyIdToken($request['google_token']);
+            
+            if (!$payload) {
+                throw new Exception('Invalid Google token');
+            }
+            
+            // Extract user info from Google token
+            $googleEmail = $payload['email'];
+            $googleName = $payload['name'];
+            $googleId = $payload['sub'];
+            $googlePicture = $payload['picture'] ?? '';
+            $emailVerified = $payload['email_verified'] ?? false;
+            
+            // Security: Only allow verified emails
+            if (!$emailVerified) {
+                throw new Exception('Email not verified by Google');
+            }
+            
+            // Check if user exists
+            $q = "SELECT iUserID, vName, vEmail, vGoogleID FROM user WHERE vEmail='" . db_input($googleEmail) . "' AND cStatus='A'";
+            $r = sql_query($q, 'AUTH.GOOGLE.1');
+            
+            if (sql_num_rows($r)) {
+                // Existing user
+                list($u_id, $u_name, $u_email, $existing_google_id) = sql_fetch_row($r);
+                
+                // Update Google ID if not set
+                if (empty($existing_google_id)) {
+                    $update_q = "UPDATE user SET vGoogleID='" . db_input($googleId) . "', vProfilePic='" . db_input($googlePicture) . "' WHERE iUserID=$u_id";
+                    sql_query($update_q, 'AUTH.GOOGLE.2');
+                }
+                
+            } else {
+                // New user - Auto-create account
+                $insert_q = "INSERT INTO user (vName, vEmail, vGoogleID, vProfilePic, cStatus, cActive, dtEntry, dtLastLogin, vLastLoginIP) 
+                             VALUES (
+                                 '" . db_input($googleName) . "',
+                                 '" . db_input($googleEmail) . "',
+                                 '" . db_input($googleId) . "',
+                                 '" . db_input($googlePicture) . "',
+                                 'A',
+                                 'Y',
+                                 '" . NOW . "',
+                                 '" . NOW . "',
+                                 '" . $_SERVER['REMOTE_ADDR'] . "'
+                             )";
+                
+                $insert_r = sql_query($insert_q, 'AUTH.GOOGLE.3');
+                
+                if (!$insert_r) {
+                    throw new Exception('Failed to create user account');
+                }
+                
+                $u_id = sql_insert_id();
+                $u_name = $googleName;
+            }
+            
+            // Create session (same as email login)
+            session_destroy();
+            session_start();
+            session_regenerate_id();
+            
+            $randomtoken = base64_encode(uniqid(rand(), true));
+            
+            $_SESSION[PROJ_SESSION_ID] = new userdat;
+            $_SESSION[PROJ_SESSION_ID]->log_time = NOW2;
+            $_SESSION[PROJ_SESSION_ID]->log_stat = "A";
+            $_SESSION[PROJ_SESSION_ID]->user_id = $u_id;
+            $_SESSION[PROJ_SESSION_ID]->user_name = $u_name;
+            $_SESSION[PROJ_SESSION_ID]->sess = session_id();
+            $_SESSION[PROJ_SESSION_ID]->rmadr = $_SERVER['REMOTE_ADDR'];
+            $_SESSION[PROJ_SESSION_ID]->lhs_menu = true;
+            $_SESSION[PROJ_SESSION_ID]->sess_token = $randomtoken;
+            $_SESSION[PROJ_SESSION_ID]->sess_active = 'Y';
+            $_SESSION[PROJ_SESSION_ID]->allow_vessel_close = 'N';
+            
+            LogAttempt($googleEmail, 'S', 'Logged via Google');
+            
+            // Update last login
+            $update_login_q = "UPDATE user SET cActive='Y', dtLastLogin='" . NOW . "', vLastLoginIP='" . $_SERVER['REMOTE_ADDR'] . "' WHERE iUserID=$u_id";
+            sql_query($update_login_q, 'AUTH.GOOGLE.4');
+            
+            $token = EncodeParam($u_id);
+            
+            http_response_code(200);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "statusCode" => 200,
+                "data" => [
+                    "token" => $token,
+                    "userName" => $u_name,
+                    "email" => $googleEmail,
+                    "profilePic" => $googlePicture,
+                    "loginType" => "google"
+                ]
+            ]);
+            exit;
+            
+        } catch (Exception $e) {
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "statusCode" => 401,
+                "error" => ["message" => "Google authentication failed: " . $e->getMessage()]
+            ]);
+            exit;
+        }
+    }
+    
+    // ============================================
+    // REGULAR EMAIL/PASSWORD LOGIN
+    // ============================================
+    elseif ($loginType === 'email') {
+        
+        $username = db_input($request["txtemail"] ?? '');
+        $txtpassword = htmlspecialchars_decode(db_input2($request["txtpassword"] ?? ''));
+        
+        if (empty($txtpassword)) {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "statusCode" => 400,
+                "error" => ["message" => "Password cannot be blank"]
+            ]);
+            exit;
+        }
+        
+        if (empty($username)) {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "statusCode" => 400,
+                "error" => ["message" => "Email cannot be blank"]
+            ]);
+            exit;
+        }
+        
+        $q = "SELECT iUserID, vName, vPassword FROM user WHERE vEmail='" . $username . "' AND cStatus='A'";
+        $r = sql_query($q, 'AUTH.61');
+        
+        if (sql_num_rows($r)) {
+            list($u_id, $u_name, $u_pass) = sql_fetch_row($r);
+            $u_pass = htmlspecialchars_decode($u_pass);
+            $ret = ($u_pass == $txtpassword) ? 1 : -1;
+        } else {
+            $ret = -2;
+        }
+        
+        if ($ret == -1 || $ret == -2) {
+            LogAttempt($username, 'F', 'Wrong credentials');
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "statusCode" => 400,
+                "error" => ["message" => "Invalid email or password"]
+            ]);
+            exit;
+        }
+        
+        if ($ret == 1) {
+            session_destroy();
+            session_start();
+            session_regenerate_id();
+            
+            $randomtoken = base64_encode(uniqid(rand(), true));
+            
+            $_SESSION[PROJ_SESSION_ID] = new userdat;
+            $_SESSION[PROJ_SESSION_ID]->log_time = NOW2;
+            $_SESSION[PROJ_SESSION_ID]->log_stat = "A";
+            $_SESSION[PROJ_SESSION_ID]->user_id = $u_id;
+            $_SESSION[PROJ_SESSION_ID]->user_name = $u_name;
+            $_SESSION[PROJ_SESSION_ID]->sess = session_id();
+            $_SESSION[PROJ_SESSION_ID]->rmadr = $_SERVER['REMOTE_ADDR'];
+            $_SESSION[PROJ_SESSION_ID]->lhs_menu = true;
+            $_SESSION[PROJ_SESSION_ID]->sess_token = $randomtoken;
+            $_SESSION[PROJ_SESSION_ID]->sess_active = 'Y';
+            $_SESSION[PROJ_SESSION_ID]->allow_vessel_close = 'N';
+            
+            LogAttempt($username, 'S', 'Logged');
+            
+            $q = "UPDATE user SET cActive='Y', dtLastLogin='" . NOW . "', vLastLoginIP='" . $_SERVER['REMOTE_ADDR'] . "' WHERE iUserID=$u_id";
+            sql_query($q, 'AUTH.78');
+            
+            $token = EncodeParam($u_id);
+            
+            http_response_code(200);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "statusCode" => 200,
+                "data" => [
+                    "token" => $token,
+                    "userName" => $u_name,
+                    "loginType" => "email"
+                ]
+            ]);
+            exit;
+        }
+    }
+    
+    http_response_code(400);
+    header('Content-Type: application/json');
+    echo json_encode([
+        "statusCode" => 400,
+        "error" => ["message" => "Invalid login request"]
+    ]);
+    exit;
+    
 } else {
-    session_destroy(); // destroy all data in session
-    //die("Forbidden - You are not authorized to view this page");
-    $response = array('statusCode' => 403, 'message' => "Forbidden - You are not authorized to view this page",);
     http_response_code(403);
     header('Content-Type: application/json');
-    echo json_encode($response);
+    echo json_encode([
+        'statusCode' => 403,
+        'message' => "Forbidden"
+    ]);
     exit;
 }
