@@ -3,7 +3,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../includes/common_api.php";
-require_once "../../vendor/autoload.php";
+require_once "../vendor/autoload.php";
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
