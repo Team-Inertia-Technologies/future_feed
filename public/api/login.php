@@ -75,21 +75,21 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
                 
                 // Update Google ID if not set
                 if (empty($existing_google_id)) {
-                    $update_q = "UPDATE user SET vGoogleID='" . db_input($googleId) . "', vProfilePic='" . db_input($googlePicture) . "' WHERE iUserID=$u_id";
+                    $update_q = "UPDATE user SET vGoogleID='" . db_input($googleId) . "', vPic='" . db_input($googlePicture) . "' WHERE iUserID=$u_id";
                     sql_query($update_q, 'AUTH.GOOGLE.2');
                 }
                 
             } else {
-                // New user - Auto-create account
-                $insert_q = "INSERT INTO user (vName, vEmail, vGoogleID, vProfilePic, cStatus, cActive, dtEntry, dtLastLogin, vLastLoginIP) 
+                $ID = NextID('iUserID', 'user');
+                $insert_q = "INSERT INTO user (iUserID, vName, vEmail, vGoogleID, vPic, cStatus, cActive, dtLastLogin, vLastLoginIP) 
                              VALUES (
+                                '" . $ID . "',
                                  '" . db_input($googleName) . "',
                                  '" . db_input($googleEmail) . "',
                                  '" . db_input($googleId) . "',
                                  '" . db_input($googlePicture) . "',
                                  'A',
                                  'Y',
-                                 '" . NOW . "',
                                  '" . NOW . "',
                                  '" . $_SERVER['REMOTE_ADDR'] . "'
                              )";
