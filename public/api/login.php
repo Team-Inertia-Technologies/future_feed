@@ -129,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
             sql_query($update_login_q, 'AUTH.GOOGLE.4');
 
             $token = EncodeParam($u_id);
-            $exists = GetXFromYID("SELECT iUserID FROM user_field_assoc WHERE iUserID = $userId LIMIT 1", "USER.FIELD.CHECK");
+            $exists = GetXFromYID("SELECT iUserID FROM user_field_assoc WHERE iUserID = $u_id LIMIT 1", "USER.FIELD.CHECK");
             $hasFields = ($exists) ? true : false;
 
             http_response_code(200);
@@ -233,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
             sql_query($q, 'AUTH.78');
 
             $token = EncodeParam($u_id);
-            $exists = GetXFromYID("SELECT iUserID FROM user_field_assoc WHERE iUserID = $userId LIMIT 1", "USER.FIELD.CHECK");
+            $exists = GetXFromYID("SELECT iUserID FROM user_field_assoc WHERE iUserID = $u_id LIMIT 1", "USER.FIELD.CHECK");
             $hasFields = ($exists) ? true : false;
 
             http_response_code(200);
