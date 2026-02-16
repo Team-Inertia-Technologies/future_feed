@@ -25,18 +25,19 @@ $userId = DecodeParam($token);
 
 try {
 
-	$likedquery = "SELECT ula.iVideoID, v.vTitle, v.vThumbnail, v.vDesc, v.vUrl, v.vName, v.iFieldID FROM user_liked_video ula JOIN videos v ON ula.iVideoID = v.iVideoID WHERE ula.iUserID = $userId AND ula.cStatus = 'A'";
+	$likedquery = "SELECT ula.iVideoID, v.vName, v.vDesc, v.vUrl, vCreator, v.iFieldID FROM user_liked_video ula JOIN videos v ON ula.iVideoID = v.iVideoID WHERE ula.iUserID = $userId AND ula.cStatus = 'A'";
 	$likedResult = sql_query($likedquery);
 	$likedVideos = [];
 	while ($row = sql_fetch_assoc($likedResult)) {
 		$likedVideos[] = [
 			"VideoID" => (int)$row['iVideoID'],
 			"FieldID" => (int)$row['iFieldID'],
-			"Title" => $row['vTitle'],
+			"Title" => $row['vName'],
 			"Thumbnail" => $row['vThumbnail'],
 			"Description" => $row['vDesc'],
 			"Url" => $row['vUrl'],
-			"ChannelName" => $row['vName']
+			"ChannelName" => $row['vCreator']
+			
 		];
 	}
 
