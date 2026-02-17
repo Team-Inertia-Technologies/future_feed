@@ -14,8 +14,7 @@ $name = isset($_REQUEST['name']) ? trim($_REQUEST['name']) : '';
 $email = isset($_REQUEST['email']) ? trim($_REQUEST['email']) : '';
 $password = htmlspecialchars_decode(isset($_REQUEST['password']) ? trim($_REQUEST['password']) : '');
 $mobile = isset($_REQUEST['mobile']) ? trim($_REQUEST['mobile']) : '';
-$DOB = isset($_REQUEST['DOB']) ? trim($_REQUEST['DOB']) : '';
-
+$DOB = date('Y-m-d', strtotime(isset($_REQUEST['DOB']) ? trim($_REQUEST['DOB']) : ''));
 if ($name == '' || $email == '' || $password == '' || $mobile == '' || $DOB == '') {
     $response = array(
         "error" => array(
