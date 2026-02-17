@@ -35,7 +35,9 @@ try {
         $response = array(
             "statusCode" => 200,
             "data" => array(
-                "userID" => $id,
+                "token" => EncodeParam($id),
+                "userName" => $name,
+                "hasFields" => false
             )
         );
         http_response_code(200);
