@@ -22,16 +22,62 @@ try {
 
     $query = "SELECT * FROM slider WHERE cStatus = 'A' ORDER BY iRank ASC";
     $result = sql_query($query);
+
     $slides = array();
+
     while ($row = sql_fetch_assoc($result)) {
         $slides[] = array(
-            "SlideID" => (int)$row['iSlideID'],
+            "id" => (string)$row['iSlideID'],
             "title" => $row['vTitle'],
-            "Image" => $row['vImage'],
-            "Description" => $row['vDesc'],
-            "Status" => $row['cStatus']
+            "highlight" => "",
+            "subtitle" => "",
+            "description" => $row['vDesc'],
+            "gradient" => ["#5EACB3", "#C9B597"],
+            "showBackButton" => false
         );
     }
+    
+    if (empty($slides)) {
+        $slides = [
+            [
+                "id" => "1",
+                "title" => "Over 64% of young people are",
+                "highlight" => "uncertain",
+                "subtitle" => "about their future path",
+                "description" => "We're here to help you discover your path through personalized career feeds.",
+                "gradient" => ["#5EACB3", "#C9B597"],
+                "showBackButton" => false
+            ],
+            [
+                "id" => "2",
+                "title" => "Explore Careers Through",
+                "highlight" => "Short Videos",
+                "subtitle" => "",
+                "description" => "Day-in-the-life, salary insights, and career paths — all in a scroll.",
+                "gradient" => ["#4A5568", "#2D3748"],
+                "showBackButton" => false
+            ],
+            [
+                "id" => "3",
+                "title" => "Personalized Just",
+                "highlight" => "For You",
+                "subtitle" => "",
+                "description" => "Our algorithm learns your interests to suggest relevant careers and mentors.",
+                "gradient" => ["#1f1022", "#2a1430"],
+                "showBackButton" => false
+            ],
+            [
+                "id" => "4",
+                "title" => "Get",
+                "highlight" => "Started",
+                "subtitle" => "",
+                "description" => "Join thousands of students finding their path on FutureFeed",
+                "gradient" => ["#1f1022", "#2a1430"],
+                "showBackButton" => true
+            ]
+        ];
+    }
+
 
     $response = array(
         "statusCode" => 200,
