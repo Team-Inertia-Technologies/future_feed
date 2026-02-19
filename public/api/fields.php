@@ -24,13 +24,14 @@ if (!$token) {
 
 try {
 
-    $query = "SELECT iFieldID, vName FROM fields WHERE cStatus = 'A' ORDER BY iRank ASC";
+    $query = "SELECT iFieldID, vName, vFile FROM fields WHERE cStatus = 'A' ORDER BY iRank ASC";
     $result = sql_query($query);
     $fields = array();
     while ($row = sql_fetch_assoc($result)) {
         $fields[] = array(
 			"FieldID" => (int)$row['iFieldID'],
-			"Name" => $row['vName']
+			"Name" => $row['vName'],
+            "icon" => $row['vFile']
         );
     }
 
