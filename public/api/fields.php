@@ -31,7 +31,7 @@ try {
         $fields[] = array(
 			"FieldID" => (int)$row['iFieldID'],
 			"Name" => $row['vName'],
-            "icon" => $row['vFile']
+            "icon" => "https://ti-stage-projects-future-feed.krjqe5.easypanel.host/uploads/" . $row['vFile']
         );
     }
 
