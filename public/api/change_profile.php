@@ -11,7 +11,7 @@ $_REQUEST = array_merge($_REQUEST, $request ?? []);
 
 $token = $_REQUEST['token'] ?? '';
 $name = $_REQUEST['name'] ?? '';
-$DOB = $_REQUEST['dob'] ?? '';
+$DOB = date('Y-m-d', strtotime(isset($_REQUEST['dob']) ? trim($_REQUEST['dob']) : ''));
 if (!$token) {
     http_response_code(400);
     header('Content-Type: application/json');

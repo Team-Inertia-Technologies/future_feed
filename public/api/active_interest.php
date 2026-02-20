@@ -29,7 +29,7 @@ try {
             f.vFile,
             ufa.cStatus
         FROM user_field_assoc ufa
-        INNER JOIN field f ON ufa.iFieldID = f.iFieldID
+        INNER JOIN fields f ON ufa.iFieldID = f.iFieldID
         WHERE ufa.iUserID = $userID
         AND ufa.cStatus = 'A'
         ORDER BY f.vName
@@ -49,7 +49,7 @@ try {
             f.iFieldID,
             f.vName,
             f.vFile
-        FROM field f
+        FROM fields f
         WHERE f.cStatus = 'A'
         AND f.iFieldID NOT IN (
             SELECT iFieldID 
