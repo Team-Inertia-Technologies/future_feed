@@ -24,23 +24,23 @@ if (!$token) {
 
 try {
     $userId = DecodeParam($token);
-    
+
     if (!$userId) {
         http_response_code(400);
-		header('Content-Type: application/json');
-		echo json_encode([
-			"statusCode" => 400,
-			"error" => [
-				"message" => "Invalid token"
-			]
-		]);
-		exit;
+        header('Content-Type: application/json');
+        echo json_encode([
+            "statusCode" => 400,
+            "error" => [
+                "message" => "Invalid token"
+            ]
+        ]);
+        exit;
     }
 
     $fieldQuery = "SELECT iFieldID FROM user_field_assoc WHERE iUserID = $userId AND cStatus = 'A'";
-	$fieldResult = sql_query($fieldQuery);
-    
-    
+    $fieldResult = sql_query($fieldQuery);
+
+
     $fieldIds = [];
     while ($row = sql_fetch_assoc($fieldResult)) {
         $fieldIds[] = $row['iFieldID'];
@@ -56,26 +56,27 @@ try {
         echo json_encode($response);
         exit;
     }
-    
+
     // Get videos that match user's fields but exclude watched ones
-	$fieldIds = array_map('intval', $fieldIds);
-	$userId   = (int)$userId;
+    $fieldIds = array_map('intval', $fieldIds);
+    $userId   = (int)$userId;
 
-	// Convert array to comma separated string
-	$fieldIdList = implode(',', $fieldIds);
+    // Convert array to comma separated string
+    $fieldIdList = implode(',', $fieldIds);
 
-	$videoQuery = "SELECT v.* FROM videos v LEFT JOIN user_watched_video uwv ON v.iVideoID = uwv.iVideoID AND uwv.iUserID = $userId AND uwv.cStatus = 'A'
+    $videoQuery = "SELECT v.* FROM videos v LEFT JOIN user_watched_video uwv ON v.iVideoID = uwv.iVideoID AND uwv.iUserID = $userId AND uwv.cStatus = 'A'
 	WHERE v.iFieldID IN ($fieldIdList)
 	AND v.cStatus = 'A'
 	AND uwv.iVideoID IS NULL
-	LIMIT 5";
+	ORDER BY RAND()
+    LIMIT 8";
 
-	$videoResult = sql_query($videoQuery);
+    $videoResult = sql_query($videoQuery);
 
-	$videos = [];
-	while ($row = sql_fetch_assoc($videoResult)) {
-		$videos[] = $row;
-	}
+    $videos = [];
+    while ($row = sql_fetch_assoc($videoResult)) {
+        $videos[] = $row;
+    }
 
     $response = [
         "statusCode" => 200,
@@ -84,9 +85,8 @@ try {
             "total" => count($videos)
         ]
     ];
-    
-    echo json_encode($response);
 
+    echo json_encode($response);
 } catch (Exception $e) {
     $response = array(
         "error" => array(

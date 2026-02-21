@@ -60,23 +60,25 @@ try {
 
     // 🔹 Final Video Query
     $videoQuery = "
-        SELECT DISTINCT v.*
-        FROM videos v
+    SELECT DISTINCT v.*
+    FROM videos v
 
-        LEFT JOIN video_tags_assoc vta 
-            ON v.iVideoID = vta.iVideoID 
-            AND vta.cStatus = 'A'
+    LEFT JOIN video_tags_assoc vta 
+        ON v.iVideoID = vta.iVideoID 
+        AND vta.cStatus = 'A'
 
-        LEFT JOIN user_watched_video uwv
-            ON v.iVideoID = uwv.iVideoID
-            AND uwv.iUserID = $userId
-            AND uwv.cStatus = 'A'
+    LEFT JOIN user_watched_video uwv
+        ON v.iVideoID = uwv.iVideoID
+        AND uwv.iUserID = $userId
+        AND uwv.cStatus = 'A'
 
-        WHERE v.iFieldID IN ($fieldIdList)
-        AND v.cStatus = 'A'
-        AND uwv.iVideoID IS NULL
-        LIMIT 5
-    ";
+    WHERE v.iFieldID IN ($fieldIdList)
+    AND v.cStatus = 'A'
+    AND uwv.iVideoID IS NULL
+
+    ORDER BY RAND()
+    LIMIT 10
+";
 
     $videoResult = sql_query($videoQuery);
 
@@ -92,7 +94,6 @@ try {
             "total" => count($videos)
         ]
     ]);
-
 } catch (Exception $e) {
 
     http_response_code(500);
