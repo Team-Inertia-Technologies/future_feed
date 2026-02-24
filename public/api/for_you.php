@@ -14,10 +14,7 @@ $token = $_REQUEST['token'] ?? '';
 
 if (!$token) {
     http_response_code(400);
-    echo json_encode([
-        "statusCode" => 400,
-        "error" => ["message" => "Missing token"]
-    ]);
+    echo json_encode(["statusCode" => 400, "error" => ["message" => "Missing token"]]);
     exit;
 }
 
@@ -27,16 +24,12 @@ try {
 
     if (!$userId) {
         http_response_code(400);
-        echo json_encode([
-            "statusCode" => 400,
-            "error" => ["message" => "Invalid token"]
-        ]);
+        echo json_encode(["statusCode" => 400, "error" => ["message" => "Invalid token"]]);
         exit;
     }
 
     $userId = (int)$userId;
 
-    // 🔹 Get user interested fields
     $fieldQuery = "SELECT iFieldID FROM user_field_assoc WHERE iUserID = $userId AND cStatus = 'A'";
     $fieldResult = sql_query($fieldQuery);
 
@@ -48,37 +41,59 @@ try {
     if (empty($fieldIds)) {
         echo json_encode([
             "statusCode" => 200,
-            "data" => [
-                "videos" => [],
-                "message" => "No field interests found for user"
-            ]
+            "data" => ["videos" => [], "message" => "No field interests found for user"]
         ]);
         exit;
     }
 
     $fieldIdList = implode(',', $fieldIds);
+    $tagQuery = "
+        SELECT DISTINCT vTags 
+        FROM videos 
+        WHERE iFieldID IN ($fieldIdList) 
+        AND cStatus = 'A' 
+        AND vTags IS NOT NULL 
+        AND vTags != ''
+    ";
+    $tagResult = sql_query($tagQuery);
 
-    // 🔹 Final Video Query
+    $allTags = [];
+    while ($row = sql_fetch_assoc($tagResult)) {
+        $tags = explode(',', $row['vTags']);
+        foreach ($tags as $tag) {
+            $clean = trim(str_replace(['"', "'"], '', $tag));
+            if ($clean !== '') {
+                $allTags[] = db_input($clean);
+            }
+        }
+    }
+    $allTags = array_unique($allTags);
+
+    $tagConditions = '';
+    if (!empty($allTags)) {
+        $tagLikes = array_map(fn($tag) => "v.vTags LIKE '%$tag%'", $allTags);
+        $tagConditions = " OR (" . implode(' OR ', $tagLikes) . ")";
+    }
+
     $videoQuery = "
-    SELECT DISTINCT v.*
-    FROM videos v
+        SELECT DISTINCT v.*
+        FROM videos v
 
-    LEFT JOIN video_tags_assoc vta 
-        ON v.iVideoID = vta.iVideoID 
-        AND vta.cStatus = 'A'
+        LEFT JOIN user_watched_video uwv
+            ON v.iVideoID = uwv.iVideoID
+            AND uwv.iUserID = $userId
+            AND uwv.cStatus = 'A'
 
-    LEFT JOIN user_watched_video uwv
-        ON v.iVideoID = uwv.iVideoID
-        AND uwv.iUserID = $userId
-        AND uwv.cStatus = 'A'
+        WHERE v.cStatus = 'A'
+        AND uwv.iVideoID IS NULL
+        AND (
+            v.iFieldID IN ($fieldIdList)
+            $tagConditions
+        )
 
-    WHERE v.iFieldID IN ($fieldIdList)
-    AND v.cStatus = 'A'
-    AND uwv.iVideoID IS NULL
-
-    ORDER BY RAND()
-    LIMIT 10
-";
+        ORDER BY RAND()
+        LIMIT 10
+    ";
 
     $videoResult = sql_query($videoQuery);
 
@@ -91,17 +106,12 @@ try {
         "statusCode" => 200,
         "data" => [
             "videos" => $videos,
-            "total" => count($videos)
+            "total"  => count($videos)
         ]
     ]);
-} catch (Exception $e) {
 
+} catch (Exception $e) {
     http_response_code(500);
-    echo json_encode([
-        "statusCode" => 500,
-        "error" => [
-            "message" => $e->getMessage()
-        ]
-    ]);
+    echo json_encode(["statusCode" => 500, "error" => ["message" => $e->getMessage()]]);
     exit;
 }
