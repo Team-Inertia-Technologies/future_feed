@@ -62,7 +62,7 @@ try {
         "data" => [
             "videos"      => $videos,
             "total"       => count($videos),
-            "unique_tags" => $uniqueTags
+            "tags" => $uniqueTags
         ]
     ]);
 
