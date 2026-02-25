@@ -38,12 +38,12 @@ try {
 
     $tag     = db_input(trim($tag));
     $fieldid = (int)$fieldid;
-	
+
     $videoQuery = "
         SELECT * FROM videos
         WHERE iFieldID = $fieldid
         AND cStatus = 'A'
-        AND vTags LIKE '%\"$tag\"%'
+        AND vTags LIKE '%$tag%'
         ORDER BY iVideoID DESC
     ";
 
