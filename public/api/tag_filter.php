@@ -11,6 +11,7 @@ $_REQUEST = array_merge($_REQUEST, $request ?? []);
 
 $token   = $_REQUEST['token']   ?? '';
 $fieldid = $_REQUEST['fieldID'] ?? '';
+$tag = $_REQUEST['tag'] ?? '';
 
 if (!$token) {
     http_response_code(400);
@@ -24,50 +25,54 @@ if (!$fieldid) {
     exit;
 }
 
+if (!$tag) {
+    http_response_code(400);
+    echo json_encode(["statusCode" => 400, "error" => ["message" => "Missing tag"]]);
+    exit;
+}
+
 $userid  = (int)DecodeParam($token);
 $fieldid = (int)$fieldid;
 
 try {
 
+    $tag     = db_input(trim($tag));
+    $fieldid = (int)$fieldid;
+	
     $videoQuery = "
         SELECT * FROM videos
         WHERE iFieldID = $fieldid
         AND cStatus = 'A'
+        AND vTags LIKE '%\"$tag\"%'
         ORDER BY iVideoID DESC
     ";
+
     $videoResult = sql_query($videoQuery);
 
-    $videos  = [];
-    $allTags = [];
-
+    $videos = [];
     while ($row = sql_fetch_assoc($videoResult)) {
         $videos[] = $row;
-
-        // Parse tags from each video
-        if (!empty($row['vTags'])) {
-            $tags = explode(',', $row['vTags']);
-            foreach ($tags as $tag) {
-                $clean = trim(str_replace(['"', "'"], '', $tag));
-                if ($clean !== '') {
-                    $allTags[] = $clean;
-                }
-            }
-        }
     }
-
-    $uniqueTags = array_values(array_unique($allTags));
 
     echo json_encode([
         "statusCode" => 200,
         "data" => [
-            "videos"      => $videos,
-            "total"       => count($videos),
-            "unique_tags" => $uniqueTags
+            "field_id" => $fieldid,
+            "tag"      => $tag,
+            "videos"   => $videos,
+            "total"    => count($videos)
         ]
     ]);
 
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(["statusCode" => 500, "error" => ["message" => $e->getMessage()]]);
-    exit;
+	$response = array(
+		"error" => array(
+			"message" => $e->getMessage()
+		),
+		"statusCode" => 500,
+	);
+	http_response_code(500);
+	header('Content-Type: application/json');
+	echo json_encode($response);
+	exit;
 }
