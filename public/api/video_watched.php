@@ -27,21 +27,34 @@ if (!$token) {
 $userid = DecodeParam($token);
 
 try {
-    $id = NextID('iAssocID', 'user_watched_video');
+    // 🔹 Check if already watched
+    $checkQuery = "SELECT iAssocID FROM user_watched_video WHERE iUserID = $userid AND iVideoID = $videoid AND cStatus = 'A'";
+    $checkResult = sql_query($checkQuery);
+
+    if (sql_num_rows($checkResult) > 0) {
+        // 🔹 Already exists - just update the duration
+        $updateQuery = "UPDATE user_watched_video SET vDuration = '$duration', dtAdded = '".NOW."' WHERE iUserID = $userid AND iVideoID = $videoid AND cStatus = 'A'";
+        sql_query($updateQuery);
+
+        echo json_encode([
+            "statusCode" => 200,
+            "data" => ["message" => "Watch duration updated"]
+        ]);
+        exit;
+    }
+
+    // 🔹 Fresh insert
+    $id  = NextID('iAssocID', 'user_watched_video');
     $now = NOW;
-    $query = "INSERT INTO user_watched_video (iAssocID, iUserID, iVideoID, vDuration, dtAdded) VALUES ($id, $userid, $videoid, $duration, '$now')";
+    $query = "INSERT INTO user_watched_video (iAssocID, iUserID, iVideoID, vDuration, dtAdded, cStatus) VALUES ($id, $userid, $videoid, '$duration', '$now', 'A')";
     sql_query($query);
 
-    $response = array(
+    echo json_encode([
         "statusCode" => 200,
-        "data" => array(
-            "message" => "Video added successfully"
-        )
-    );
-    http_response_code(200);
-    header('Content-Type: application/json');
-    echo json_encode($response);
+        "data" => ["message" => "Video watched successfully"]
+    ]);
     exit;
+
 } catch (Exception $e) {
     $response = array(
         "error" => array(
