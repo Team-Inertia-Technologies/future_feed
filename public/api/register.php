@@ -79,7 +79,7 @@ if (!empty($existing_id)) {
 
 try {
     $id        = NextID('iUserID', 'user');
-    $auth_type = ($google_id !== '') ? 'GOOGLE' : 'EMAIL';
+    
 
     $q = "INSERT INTO user
               (iUserID, vName, vEmail, vPassword, vMobile, dDOB, vGoogleID, vPic, cStatus)
