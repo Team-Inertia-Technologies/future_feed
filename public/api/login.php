@@ -41,7 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
         }
 
         // Your Google Client ID
-        $googleClientId = '856248388214-8obo2cg3s0i59cc1e1btsqi4vfhnrppg.apps.googleusercontent.com';
+        // $googleClientId = '856248388214-8obo2cg3s0i59cc1e1btsqi4vfhnrppg.apps.googleusercontent.com';
+        $googleClientId = '595789305816-7mv597ph6jmmt80p4737h05tkjf9cldo.apps.googleusercontent.com';
 
         $client = new Google_Client(['client_id' => $googleClientId]);
 
