@@ -54,7 +54,23 @@ if ($newPassword !== $confirmPassword) {
     exit;
 }
 
+$userQuery = "
+    SELECT iUserID 
+    FROM user 
+    WHERE vPassword = '" . db_input($currentPassword) . "'
+    LIMIT 1
+";
 
+$userResult = sql_query($userQuery, 'API.CHANGE.PASS.1');
+
+if (!sql_num_rows($userResult)) {
+    http_response_code(404);
+    echo json_encode([
+        "statusCode" => 404,
+        "error" => ["message" => "Current password is incorrect"]
+    ]);
+    exit;
+}
 
 $updateQuery = "
     UPDATE user 

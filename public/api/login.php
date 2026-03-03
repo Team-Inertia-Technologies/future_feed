@@ -67,12 +67,12 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
             }
 
             // Check if user exists
-            $q = "SELECT iUserID, vName, vEmail, vGoogleID FROM user WHERE vEmail='" . db_input($googleEmail) . "' AND cStatus='A'";
+            $q = "SELECT iUserID, vName, vEmail, vGoogleID, dDOB FROM user WHERE vEmail='" . db_input($googleEmail) . "' AND cStatus='A'";
             $r = sql_query($q, 'AUTH.GOOGLE.1');
 
             if (sql_num_rows($r)) {
                 // Existing user
-                list($u_id, $u_name, $u_email, $existing_google_id) = sql_fetch_row($r);
+                list($u_id, $u_name, $u_email, $existing_google_id, $dob) = sql_fetch_row($r);
 
                 // Update Google ID if not set
                 if (empty($existing_google_id)) {
@@ -141,6 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
                     "token" => $token,
                     "userName" => $u_name,
                     "email" => $googleEmail,
+                    "DOB" => $dob,
                     "profilePic" => $googlePicture,
                     "loginType" => "google",
                     "hasFields" => $hasFields
@@ -187,11 +188,11 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
             exit;
         }
 
-        $q = "SELECT iUserID, vName, vPassword FROM user WHERE vEmail='" . $username . "' AND cStatus='A'";
+        $q = "SELECT iUserID, vName, vPassword, dDOB FROM user WHERE vEmail='" . $username . "' AND cStatus='A'";
         $r = sql_query($q, 'AUTH.61');
 
         if (sql_num_rows($r)) {
-            list($u_id, $u_name, $u_pass) = sql_fetch_row($r);
+            list($u_id, $u_name, $u_pass, $dob) = sql_fetch_row($r);
             $u_pass = htmlspecialchars_decode($u_pass);
             $ret = ($u_pass == $txtpassword) ? 1 : -1;
         } else {
@@ -244,6 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
                 "data" => [
                     "token" => $token,
                     "userName" => $u_name,
+                    "DOB" => $dob,
                     "loginType" => "email",
                     "hasFields" => $hasFields
                 ]
