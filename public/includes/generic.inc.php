@@ -5529,7 +5529,7 @@ function GetVehicle_BasedOnSearch($txtpickup_time,$txtpickup_location,$txttype=0
 function send_brevo($subject, $email, $contents, $attachment, $cc = '', $site_title = '', $bcc = '')
 {
     $config = array();
-    $config['api_key'] = "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";
+    $config['api_key'] = "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";
     $config['api_url'] = "https://api.sendinblue.com/v3/smtp/email";
     $message = array();
     $message['sender'] = array("name" => "$site_title", "email" => "noreply@futurefeed.top");
@@ -5577,7 +5577,7 @@ function send_brevo($subject, $email, $contents, $attachment, $cc = '', $site_ti
     curl_setopt($ch, CURLOPT_POSTFIELDS, $message_json);
     curl_setopt($ch, CURLOPT_HTTPHEADER, array(
         'accept: application/json',
-        'api-key: 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',
+        'api-key: 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',
         'content-type: application/json'
     ));
     $result = curl_exec($ch);
