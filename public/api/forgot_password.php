@@ -40,7 +40,7 @@ $expires_at = date('Y-m-d H:i:s', strtotime('+1 hour'));
 sql_query("INSERT INTO password_resets (iUserID, vToken, dExpiresAt, cStatus) 
 VALUES ('$user_id', '$token', '$expires_at', 'A')");
 
-$reset_link  = "https://futurefeed.top/reset-password.php?token=$token&email=" . urlencode($email);
+$reset_link  = "https://futurefeed.top/api/reset-password.php?token=$token&email=" . urlencode($email);
 $site_title  = "Future Feed";
 
 $contents = "
@@ -74,12 +74,16 @@ $subject = "Reset Your Password - $site_title";
 
 // Send email via Brevo
 $result      = send_brevo($subject, $email, $contents, '', '', $site_title);
-echo $result; // For debugging purposes
 $result_data = json_decode($result, true);
 
-// Brevo returns messageId on success
 if (!empty($result_data['messageId'])) {
-    echo json_encode(['statusCode' => 200, 'message' => 'Password reset link has been sent to your email.']);
+    echo json_encode([
+        'statusCode' => 200,
+        'message' => 'Password reset link has been sent to your email.'
+    ]);
 } else {
-    echo json_encode(['statusCode' => 400, 'message' => 'Failed to send email. Please try again later.']);
+    echo json_encode([
+        'statusCode' => 400,
+        'message' => $result_data['message'] ?? 'Failed to send email.'
+    ]);
 }

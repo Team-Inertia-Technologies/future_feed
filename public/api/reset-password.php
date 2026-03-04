@@ -31,8 +31,8 @@ if (sql_num_rows($query) == 0) {
 }
 
 $data = sql_fetch_assoc($query);
-
-if (strtotime($data['dExpiresAt']) < time()) {
+$NOW = NOW;
+if ($data['dExpiresAt'] < $NOW) {
     die("Reset link has expired.");
 }
 
