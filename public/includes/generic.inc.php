@@ -5526,6 +5526,65 @@ function GetVehicle_BasedOnSearch($txtpickup_time,$txtpickup_location,$txttype=0
 		AND fb.iFleet_BookingID IS NULL;*/
 }
 
+function send_brevo($subject, $email, $contents, $attachment, $cc = '', $site_title = '', $bcc = '')
+{
+    $config = array();
+    $config['api_key'] = "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";
+    $config['api_url'] = "https://api.sendinblue.com/v3/smtp/email";
+    $message = array();
+    $message['sender'] = array("name" => "$site_title", "email" => "noreply@futurefeed.top");
+    $message['to'][] = array("email" => "$email");
+    if (!empty($cc)) {
+        $cc_arr = explode(",", $cc);
+        for ($c = 0; $c < sizeof($cc_arr); $c++) {
+            $message['cc'][] = array("email" => "$cc_arr[$c]");
+        }
+    }
+    if (!empty($bcc)) {
+        $bcc_arr = explode(",", $bcc);
+        for ($b = 0; $b < sizeof($bcc_arr); $b++) {
+            $message['bcc'][] = array("email" => "$bcc_arr[$b]");
+        }
+    }
+    $message['subject'] = $subject;
+    $message['htmlContent'] = $contents;
+    if (!empty($attachment)) {
+        if (is_array($attachment)) {
+            $attachment_item[] = array(
+                'url' => $attachment
+            );
+            $attachment_list = array($attachment_item);
+            // Ends pdf wrapper
+            $message['attachment'] = $attachment_list;
+        } else {
+            $attachment_item = array(
+                'url' => $attachment
+            );
+            $attachment_list = array($attachment_item);
+            // Ends pdf wrapper
+            $message['attachment'] = $attachment_list;
+        }
+    }
+    $message_json = json_encode($message);
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $config['api_url']);
+    curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $message_json);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        'accept: application/json',
+        'api-key: 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',
+        'content-type: application/json'
+    ));
+    $result = curl_exec($ch);
+    curl_close($ch);
+    return $result;
+}
+
 function GetVehicle_BasedOnSearch2($txttype=0,$txtcatid=0,$show_currentstatus='N',$txtfrom_time='',$txtto_time='')
 {
 	$arr = $arr2 = array();
