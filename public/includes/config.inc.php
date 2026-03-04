@@ -49,6 +49,7 @@ define('SITE_ADDRESS2', $_ENV["APP_URL"]);
 define('DOCROOT', $_ENV["DOCROOT"]);
 define('DOCROOT2', $_ENV["DOCROOT2"]);
 define('SITE_NAME', $_ENV["APP_NAME"]);
+define('API_KEY', $_ENV["API_KEY"]);
 
 define('DB_HOST', $_ENV["DB_HOST"]);
 define('DB_USERNAME', $_ENV["DB_USERNAME"]);

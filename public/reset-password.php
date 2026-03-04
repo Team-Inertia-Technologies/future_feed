@@ -1,7 +1,8 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
-include "../includes/common_api.php";
+$NO_REDIRECT = $NO_PRELOAD = 1;
+// error_reporting(E_ALL);
+// ini_set('display_errors', 0);
+include "includes/common_front.php";
 
 $email = $_GET['email'] ?? '';
 $token = $_GET['token'] ?? '';
