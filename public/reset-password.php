@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } else {
 
         // Base64 + MD5 hashing (as requested)
-        $hashed_password = base64_encode(md5($new_password));
+        $hashed_password = base64_encode(md5($new_password, true));
 
         sql_query("UPDATE user 
                    SET vPassword = '$hashed_password' 
