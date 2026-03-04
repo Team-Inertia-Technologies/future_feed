@@ -74,6 +74,7 @@ $subject = "Reset Your Password - $site_title";
 
 // Send email via Brevo
 $result      = send_brevo($subject, $email, $contents, '', '', $site_title);
+echo $result; // For debugging purposes
 $result_data = json_decode($result, true);
 
 // Brevo returns messageId on success
