@@ -273,6 +273,7 @@ try {
             "hasFields"     => false,
             "emailVerified" => false,
             "emailSent"     => true,
+            "email"         => $email,
         ]
     ]);
 
