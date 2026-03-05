@@ -36,7 +36,8 @@ try {
 			"Thumbnail" => $row['vThumbnail'],
 			"Description" => $row['vDesc'],
 			"Url" => $row['vUrl'],
-			"ChannelName" => $row['vCreator']
+			"ChannelName" => $row['vCreator'],
+			"isLiked" => true
 			
 		];
 	}

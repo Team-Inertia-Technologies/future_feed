@@ -1,6 +1,6 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../includes/common_api.php";
 
@@ -61,43 +61,221 @@ if ($google_token !== '') {
 
 $name      = isset($_REQUEST['name'])      ? trim($_REQUEST['name'])      : '';
 $email     = isset($_REQUEST['email'])     ? trim($_REQUEST['email'])     : '';
-$password  = htmlspecialchars_decode(isset($_REQUEST['password']) ? trim($_REQUEST['password']) : '');
-$mobile    = isset($_REQUEST['mobile'])   ? trim($_REQUEST['mobile'])    : '';
-$DOB       = date('Y-m-d', strtotime(isset($_REQUEST['DOB']) ? trim($_REQUEST['DOB']) : ''));
-$google_id = isset($_REQUEST['google_id']) ? trim($_REQUEST['google_id']) : ''; 
+$password  = htmlspecialchars_decode(isset($_REQUEST['password'])  ? trim($_REQUEST['password'])  : '');
+$mobile    = isset($_REQUEST['mobile'])    ? trim($_REQUEST['mobile'])    : '';
+$DOB       = date('Y-m-d', strtotime(isset($_REQUEST['DOB'])       ? trim($_REQUEST['DOB'])       : ''));
+$google_id = isset($_REQUEST['google_id']) ? trim($_REQUEST['google_id']) : '';
 $picture   = isset($_REQUEST['pic'])       ? trim($_REQUEST['pic'])       : '';
 
 if ($name === '' || $email === '' || $password === '' || $mobile === '' || $DOB === '') {
     respond(400, ["statusCode" => 400, "error" => ["message" => "All fields are required"]]);
 }
 
-// Duplicate email check
-$existing_id = GetXFromYID("SELECT iUserID FROM user WHERE vEmail = '$email' LIMIT 1");
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    respond(400, ["statusCode" => 400, "error" => ["message" => "Invalid email address."]]);
+}
+
+$existing_id = GetXFromYID("SELECT iUserID FROM user WHERE vEmail = '" . db_input($email) . "' LIMIT 1");
 if (!empty($existing_id)) {
     respond(409, ["statusCode" => 409, "error" => ["message" => "An account with this email already exists. Please log in."]]);
 }
 
 try {
-    $id        = NextID('iUserID', 'user');
-    
+    $id = NextID('iUserID', 'user');
+
+    $name_esc     = db_input($name);
+    $email_esc    = db_input($email);
+    $password_esc = db_input($password);
+    $mobile_esc   = db_input($mobile);
+    $google_esc   = db_input($google_id);
+    $picture_esc  = db_input($picture);
 
     $q = "INSERT INTO user
-              (iUserID, vName, vEmail, vPassword, vMobile, dDOB, vGoogleID, vPic, cStatus)
+              (iUserID, vName, vEmail, vPassword, vMobile, dDOB, vGoogleID, vPic, cStatus, cEmailVerified)
           VALUES
-              ($id, '$name', '$email', '$password', '$mobile', '$DOB', '$google_id', '$picture', 'A')";
+              ($id, '$name_esc', '$email_esc', '$password_esc', '$mobile_esc', '$DOB', '$google_esc', '$picture_esc', 'A', 'N')";
 
-    if (sql_query($q)) {
+    if (!sql_query($q)) {
+        respond(500, ["statusCode" => 500, "error" => ["message" => "Failed to register user"]]);
+    }
+
+    $otp        = str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
+    $expires_at = date('Y-m-d H:i:s', strtotime('+10 minutes'));
+
+    sql_query("UPDATE email_otps SET cStatus = 'U' WHERE iUserID = '$id'");
+
+    sql_query("INSERT INTO email_otps (iUserID, vOTP, dExpiresAt, cStatus)
+               VALUES ('$id', '$otp', '$expires_at', 'A')");
+
+    $site_title = "Future Feed";
+    $year       = date('Y');
+
+    $email_body = "
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='UTF-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <title>Verify Your Email</title>
+</head>
+<body style='margin:0; padding:0; background-color:#1a1025; font-family: Arial, sans-serif;'>
+
+  <table width='100%' cellpadding='0' cellspacing='0' border='0'
+         style='background-color:#1a1025; padding:40px 20px;'>
+    <tr>
+      <td align='center'>
+
+        <!-- Card -->
+        <table width='100%' cellpadding='0' cellspacing='0' border='0'
+               style='max-width:520px;
+                      background: linear-gradient(145deg, #1e1030, #221240);
+                      border-radius:20px;
+                      border:1px solid rgba(255,255,255,0.08);
+                      overflow:hidden;'>
+
+          <!-- Top accent bar -->
+          <tr>
+            <td style='height:4px;
+                       background:linear-gradient(90deg,#c44dff 0%,#a020f0 100%);'></td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style='padding:44px 44px 40px;'>
+
+              <!-- Icon -->
+              <table cellpadding='0' cellspacing='0' border='0' style='margin-bottom:28px;'>
+                <tr>
+                  <td style='width:62px; height:62px;
+                             background:linear-gradient(135deg,#c44dff 0%,#8e2de2 100%);
+                             border-radius:16px; text-align:center; vertical-align:middle;'>
+                    <img src='https://img.icons8.com/ios-filled/50/ffffff/email-open.png'
+                         width='28' height='28' alt='email'
+                         style='display:block; margin:auto;'>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Heading -->
+              <p style='margin:0 0 10px; font-size:24px; font-weight:700;
+                        color:#ffffff; letter-spacing:-0.3px;'>
+                Verify Your Email
+              </p>
+
+              <!-- Subtitle -->
+              <p style='margin:0 0 28px; font-size:13.5px; color:#9b8db0; line-height:1.6;'>
+                Thanks for signing up with $site_title! Use the OTP below to verify your email address.
+              </p>
+
+              <!-- Divider -->
+              <table width='100%' cellpadding='0' cellspacing='0' border='0'
+                     style='margin-bottom:28px;'>
+                <tr><td style='height:1px; background:rgba(255,255,255,0.07);'></td></tr>
+              </table>
+
+              <!-- Greeting -->
+              <p style='margin:0 0 22px; font-size:14px; color:#cbbfe0; line-height:1.7;'>
+                Hi <strong style='color:#ffffff;'>$name</strong>,
+              </p>
+
+              <!-- OTP Box -->
+              <table cellpadding='0' cellspacing='0' border='0' width='100%'
+                     style='margin-bottom:28px;'>
+                <tr>
+                  <td align='center'>
+                    <table cellpadding='0' cellspacing='0' border='0'
+                           style='background:rgba(180,40,255,0.12);
+                                  border:1px solid rgba(180,40,255,0.35);
+                                  border-radius:14px;
+                                  padding:22px 40px;'>
+                      <tr>
+                        <td align='center'>
+                          <p style='margin:0 0 6px; font-size:12px;
+                                    color:#9b8db0; letter-spacing:2px;
+                                    text-transform:uppercase;'>Your OTP Code</p>
+                          <p style='margin:0; font-size:42px; font-weight:700;
+                                    color:#ffffff; letter-spacing:10px;
+                                    font-family: \"Courier New\", monospace;'>$otp</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Expiry note -->
+              <p style='margin:0 0 28px; font-size:13.5px; color:#9b8db0;
+                        line-height:1.7; text-align:center;'>
+                This code will expire in
+                <strong style='color:#d0c4e0;'>10 minutes</strong>.
+                Do not share it with anyone.
+              </p>
+
+              <!-- Divider -->
+              <table width='100%' cellpadding='0' cellspacing='0' border='0'
+                     style='margin-bottom:24px;'>
+                <tr><td style='height:1px; background:rgba(255,255,255,0.07);'></td></tr>
+              </table>
+
+              <!-- Ignore notice -->
+              <p style='margin:0; font-size:12px; color:#5e5270; line-height:1.6;'>
+                If you did not create an account with $site_title, you can safely ignore this email.
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style='padding:20px 44px;
+                       background:rgba(0,0,0,0.2);
+                       border-top:1px solid rgba(255,255,255,0.06);
+                       text-align:center;'>
+              <p style='margin:0; font-size:12px; color:#4a3d60;'>
+                &copy; $year $site_title &mdash; All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+        <!-- /Card -->
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
+";
+
+    $subject     = "Verify Your Email - $site_title";
+    $result      = send_brevo($subject, $email, $email_body, '', '', $site_title);
+    $result_data = json_decode($result, true);
+
+    if (empty($result_data['messageId'])) {
         respond(200, [
             "statusCode" => 200,
             "data" => [
-                "token"     => EncodeParam($id),
-                "userName"  => $name,
-                "hasFields" => false,
+                "token"         => EncodeParam($id),
+                "userName"      => $name,
+                "hasFields"     => false,
+                "emailVerified" => false,
+                "emailSent"     => false,
             ]
         ]);
-    } else {
-        respond(500, ["statusCode" => 500, "error" => ["message" => "Failed to register user"]]);
     }
+
+    respond(200, [
+        "statusCode" => 200,
+        "data" => [
+            "token"         => EncodeParam($id),
+            "userName"      => $name,
+            "hasFields"     => false,
+            "emailVerified" => false,
+            "emailSent"     => true,
+        ]
+    ]);
+
 } catch (Exception $e) {
     respond(500, ["statusCode" => 500, "error" => ["message" => $e->getMessage()]]);
 }

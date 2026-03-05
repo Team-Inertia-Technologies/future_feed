@@ -10,6 +10,7 @@ $request = json_decode($postdata, true);
 $_REQUEST = array_merge($_REQUEST, $request ?? []);
 
 $token = $_REQUEST['token'] ?? '';
+$mode = $_REQUEST['mode'] ?? '';
 $videoID = $_REQUEST['videoID'] ?? '';
 $comment = $_REQUEST['comment'] ?? '';
 if (!$token) {
@@ -26,21 +27,41 @@ if (!$token) {
 $userid = DecodeParam($token);
 
 try {
-	$now = NOW;
-	$query = "Insert INTO comment (iUserID, iVideoID, vComment, dtAdded) VALUES ($userid, $videoID, '$comment', '$now')"; 
-	sql_query($query);
+	if ($mode === 'Add') {
+		$now = NOW;
+		$query = "Insert INTO comment (iUserID, iVideoID, vComment, dtAdded) VALUES ($userid, $videoID, '$comment', '$now')"; 
+		sql_query($query);
 
-	$response = array(
-		"statusCode" => 200,
-		"data" => array(
-			"message" => "Comment added successfully"
-		)
-	);
-	http_response_code(200);
-	header('Content-Type: application/json');
-	echo json_encode($response);
-	exit;
-	 
+		$response = array(
+			"statusCode" => 200,
+			"data" => array(
+				"message" => "Comment added successfully"
+			)
+		);
+		http_response_code(200);
+		header('Content-Type: application/json');
+		echo json_encode($response);
+		exit;
+	} 
+	if ($mode === 'View') {
+		$query = "SELECT c.vComment, u.vName, c.dtAdded FROM comment c JOIN user u ON c.iUserID = u.iUserID WHERE c.iVideoID = $videoID ORDER BY c.dtAdded DESC";
+		$result = sql_query($query);
+		$comments = [];
+		while ($row = sql_fetch_assoc($result)) {
+			$comments[] = $row;
+		}
+
+		$response = array(
+			"statusCode" => 200,
+			"data" => array(
+				"comments" => $comments
+			)
+		);
+		http_response_code(200);
+		header('Content-Type: application/json');
+		echo json_encode($response);
+		exit;
+	}
 } catch (Exception $e) {
 	$response = array(
 		"error" => array(
