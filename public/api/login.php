@@ -80,28 +80,21 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
                     sql_query($update_q, 'AUTH.GOOGLE.2');
                 }
             } else {
-                $ID = NextID('iUserID', 'user');
-                $insert_q = "INSERT INTO user (iUserID, vName, vEmail, vGoogleID, vPic, cStatus, cActive, dtLastLogin, vLastLoginIP) 
-                             VALUES (
-                                '" . $ID . "',
-                                 '" . db_input($googleName) . "',
-                                 '" . db_input($googleEmail) . "',
-                                 '" . db_input($googleId) . "',
-                                 '" . db_input($googlePicture) . "',
-                                 'A',
-                                 'Y',
-                                 '" . NOW . "',
-                                 '" . $_SERVER['REMOTE_ADDR'] . "'
-                             )";
-
-                $insert_r = sql_query($insert_q, 'AUTH.GOOGLE.3');
-
-                if (!$insert_r) {
-                    throw new Exception('Failed to create user account');
-                }
-
-                $u_id = sql_insert_id();
-                $u_name = $googleName;
+                http_response_code(201);
+                header('Content-Type: application/json');
+                echo json_encode([
+                    "statusCode" => 201,
+                    "error" => [
+                        "message" => "No account found. Please register first.",
+                        "data" => [
+                            "name"      => $googleName,
+                            "email"     => $googleEmail,
+                            "google_id" => $googleId,
+                            "pic"       => $googlePicture,
+                        ]
+                    ]
+                ]);
+                exit;
             }
 
             // Create session (same as email login)

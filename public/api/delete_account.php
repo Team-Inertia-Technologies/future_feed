@@ -18,12 +18,12 @@ function respond(int $code, array $body): void {
 /* ===============================
    VALIDATE TOKEN
 ================================= */
-$token = $_REQUEST['token'] ?? '';
+// $token = $_REQUEST['token'] ?? '';
 $email = trim($_REQUEST['email'] ?? '');
 
-if (!$token) {
-    respond(400, ["statusCode" => 400, "error" => ["message" => "Missing token."]]);
-}
+// if (!$token) {
+//     respond(400, ["statusCode" => 400, "error" => ["message" => "Missing token."]]);
+// }
 
 if (empty($email)) {
     respond(400, ["statusCode" => 400, "error" => ["message" => "Email is required."]]);
@@ -33,8 +33,8 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     respond(400, ["statusCode" => 400, "error" => ["message" => "Invalid email address."]]);
 }
 
-$user_id = (int) DecodeParam($token);
-
+$user_id = GetXFromYID("SELECT iUserID FROM user WHERE vEmail = '" . db_input($email) . "' AND cStatus = 'A' LIMIT 1");
+$token = EncodeParam($user_id);
 if (empty($user_id)) {
     respond(401, ["statusCode" => 401, "error" => ["message" => "Invalid or tampered token."]]);
 }
@@ -249,6 +249,7 @@ try {
         "data" => [
             "message" => "A confirmation OTP has been sent to your email address.",
             "email"   => $email,
+			"token"   => $token
         ]
     ]);
 
