@@ -33,6 +33,8 @@ RUN docker-php-ext-configure zip && \
 # Add application code
 ADD ./public /var/www/html
 
+ADD ./public/frontend /var/www/html
+
 # Set permissions for the web directory
 RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 777 /var/www/html/uploads
