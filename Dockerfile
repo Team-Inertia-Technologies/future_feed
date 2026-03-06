@@ -37,7 +37,7 @@ ADD ./public/frontend /var/www/html
 
 # Set permissions for the web directory
 RUN chown -R www-data:www-data /var/www/html && \
-    chmod -R 777 /var/www/html/uploads
+    chmod -R 755 /var/www/html/uploads
 
 # Add Apache configurations
 COPY ./config/my-site.conf /etc/apache2/sites-available/my-site.conf
