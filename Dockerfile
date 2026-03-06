@@ -33,10 +33,6 @@ RUN docker-php-ext-configure zip && \
 # Add application code
 ADD ./public /var/www/html
 
-# Set frontend as Apache document root
-RUN sed -i 's!/var/www/html!/var/www/html/frontend!g' /etc/apache2/sites-available/000-default.conf && \
-    sed -i 's!/var/www/html!/var/www/html/frontend!g' /etc/apache2/apache2.conf
-
 # Set permissions for the web directory
 RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 777 /var/www/html/uploads
