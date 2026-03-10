@@ -23,7 +23,7 @@ if (!$token) {
 $userid = DecodeParam($token);
 
 try {
-    $query = "SELECT vName, vEmail FROM user WHERE iUserID = " . intval($userid);
+    $query = "SELECT vName, vEmail, vPic FROM user WHERE iUserID = " . intval($userid);
     $result = sql_query($query);
     $row = sql_fetch_assoc($result);
 
@@ -44,6 +44,7 @@ try {
         "data" => [
             "name"  => $row['vName'],
             "email" => $row['vEmail'],
+            "pic"   => 'https://futurefeed.top/public/uploads/' . $row['vPic'],
 			"watched" => (int) GetXFromYID("SELECT COUNT(*) FROM user_watched_video WHERE iUserID = $userid"),
 			"liked" => (int) GetXFromYID("SELECT COUNT(*) FROM user_liked_video WHERE iUserID = $userid"),
         ]
