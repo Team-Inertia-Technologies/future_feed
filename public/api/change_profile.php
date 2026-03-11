@@ -62,9 +62,9 @@ try {
 
         // Build upload path
         $uploadDir = "../uploads/profile_pics/";
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
+        // if (!is_dir($uploadDir)) {
+        //     mkdir($uploadDir, 0755, true);
+        // }
 
         $ext           = pathinfo($file['name'], PATHINFO_EXTENSION);
         $photoFilename = "user_" . $userID . "_" . time() . "." . $ext;
