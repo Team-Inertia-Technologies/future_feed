@@ -61,7 +61,7 @@ try {
         }
 
         // Build upload path
-        $uploadDir = "../uploads/profile_pics/";
+        $uploadDir = "https://futurefeed.top/uploads/profile_pics/";
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }
@@ -111,7 +111,7 @@ try {
     // ── Return updated pic URL if uploaded ────────────────────────────
     $responseData = ["message" => "User updated successfully"];
     if (!empty($photoFilename)) {
-        $responseData["profile_pic"] = "https://futurefeed.top/public/uploads/profile_pics/" . $photoFilename;
+        $responseData["profile_pic"] = "https://futurefeed.top/uploads/profile_pics/" . $photoFilename;
     }
 
     http_response_code(200);
