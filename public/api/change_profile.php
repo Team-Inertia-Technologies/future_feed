@@ -1,6 +1,6 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../includes/common_api.php";
 header('Content-Type: application/json');
@@ -90,7 +90,7 @@ try {
         $setParts[] = "dDOB = '$DOB'";
     }
     if (!empty($photoFilename)) {
-        $setParts[] = "vPic = '../uploads/profile_pics/" . db_input($photoFilename) . "'";
+        $setParts[] = "vPic = '" . db_input($photoFilename) . "'";
     }
 
     if (empty($setParts)) {
@@ -104,14 +104,14 @@ try {
 
     $setClause = implode(", ", $setParts);
     $query     = "UPDATE user SET $setClause WHERE iUserID = $userID";
-    echo $query;
-    exit;
+    // echo $query;
+    // exit;
     sql_query($query);
 
     // ── Return updated pic URL if uploaded ────────────────────────────
     $responseData = ["message" => "User updated successfully"];
     if (!empty($photoFilename)) {
-        $responseData["profile_pic"] = "uploads/profile_pics/" . $photoFilename;
+        $responseData["profile_pic"] = "https://futurefeed.top/public/uploads/profile_pics/" . $photoFilename;
     }
 
     http_response_code(200);
