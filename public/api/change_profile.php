@@ -1,6 +1,6 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 0);
+ini_set('display_errors', 1);
 $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../includes/common_api.php";
 header('Content-Type: application/json');
@@ -104,6 +104,8 @@ try {
 
     $setClause = implode(", ", $setParts);
     $query     = "UPDATE user SET $setClause WHERE iUserID = $userID";
+    echo $query;
+    exit;
     sql_query($query);
 
     // ── Return updated pic URL if uploaded ────────────────────────────
