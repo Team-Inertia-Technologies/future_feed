@@ -112,6 +112,11 @@ try {
     $responseData = ["message" => "User updated successfully"];
     if (!empty($photoFilename)) {
         $responseData["profile_pic"] = "https://futurefeed.top/uploads/profile_pics/" . $photoFilename;
+    } else {
+        $existingPic = GetXFromYID("SELECT vPic FROM user WHERE iUserID = $userID");
+        if ($existingPic) {
+            $responseData["profile_pic"] = "https://futurefeed.top/uploads/profile_pics/" . $existingPic;
+        }
     }
 
     http_response_code(200);
