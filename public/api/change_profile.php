@@ -61,7 +61,7 @@ try {
         }
 
         // Build upload path
-        $uploadDir = "https://futurefeed.top/uploads/profile_pics/";
+        $uploadDir = DOCROOT . "uploads/profile_pics/";
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }
