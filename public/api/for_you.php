@@ -76,40 +76,49 @@ try {
     }
 
     $videoQuery = "
-    SELECT DISTINCT v.*,
-        COUNT(DISTINCT vl.iAssocID) AS like_count,
-        COUNT(DISTINCT vc.iCommentID) AS comment_count
-    FROM videos v
+        SELECT DISTINCT v.*,
+            COUNT(DISTINCT vl.iAssocID) AS like_count,
+            COUNT(DISTINCT vc.iCommentID) AS comment_count,
+            CASE WHEN ul.iUserID IS NOT NULL THEN 1 ELSE 0 END AS isLiked
+        FROM videos v
 
-    LEFT JOIN user_watched_video uwv
-        ON v.iVideoID = uwv.iVideoID
-        AND uwv.iUserID = $userId
-        AND uwv.cStatus = 'A'
+        LEFT JOIN user_watched_video uwv
+            ON v.iVideoID = uwv.iVideoID
+            AND uwv.iUserID = $userId
+            AND uwv.cStatus = 'A'
 
-    LEFT JOIN user_liked_video vl
-        ON v.iVideoID = vl.iVideoID
-        AND vl.cStatus = 'A'
+        LEFT JOIN user_liked_video vl
+            ON v.iVideoID = vl.iVideoID
+            AND vl.cStatus = 'A'
 
-    LEFT JOIN comment vc
-        ON v.iVideoID = vc.iVideoID
-        AND vc.cStatus = 'A'
+        LEFT JOIN comment vc
+            ON v.iVideoID = vc.iVideoID
+            AND vc.cStatus = 'A'
 
-    WHERE v.cStatus = 'A'
-    AND uwv.iVideoID IS NULL
-    AND (
-        v.iFieldID IN ($fieldIdList)
-        $tagConditions
-    )
+        LEFT JOIN user_liked_video ul
+            ON v.iVideoID = ul.iVideoID
+            AND ul.iUserID = $userId
+            AND ul.cStatus = 'A'
 
-    GROUP BY v.iVideoID
-    ORDER BY RAND()
-    LIMIT 10
-";
+        WHERE v.cStatus = 'A'
+        AND uwv.iVideoID IS NULL
+        AND (
+            v.iFieldID IN ($fieldIdList)
+            $tagConditions
+        )
+
+        GROUP BY v.iVideoID
+        ORDER BY RAND()
+        LIMIT 10
+    ";
 
     $videoResult = sql_query($videoQuery);
 
     $videos = [];
     while ($row = sql_fetch_assoc($videoResult)) {
+        $row['like_count']    = (int)$row['like_count'];
+        $row['comment_count'] = (int)$row['comment_count'];
+        $row['isLiked']       = (bool)$row['isLiked'];
         $videos[] = $row;
     }
 
