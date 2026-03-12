@@ -35,7 +35,8 @@ try {
 		$response = array(
 			"statusCode" => 200,
 			"data" => array(
-				"message" => "Comment added successfully"
+				"message" => "Comment added successfully",
+				"currentCommentCount" => (int) GetXFromYID("SELECT COUNT(*) FROM comment WHERE iVideoID = $videoID")
 			)
 		);
 		http_response_code(200);
