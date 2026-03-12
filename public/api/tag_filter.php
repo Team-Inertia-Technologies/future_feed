@@ -40,17 +40,48 @@ try {
     $fieldid = (int)$fieldid;
 
     $videoQuery = "
-        SELECT * FROM videos
-        WHERE iFieldID = $fieldid
-        AND cStatus = 'A'
-        AND vTags LIKE '%$tag%'
-        ORDER BY iVideoID DESC
+        SELECT 
+            v.*,
+            COALESCE(l.like_count, 0)    AS like_count,
+            COALESCE(c.comment_count, 0) AS comment_count,
+            CASE WHEN ul.iUserID IS NOT NULL THEN 1 ELSE 0 END AS isLiked
+        FROM videos v
+
+        LEFT JOIN (
+            SELECT iVideoID, COUNT(*) AS like_count
+            FROM user_liked_video
+            WHERE cStatus = 'A'
+            GROUP BY iVideoID
+        ) l ON v.iVideoID = l.iVideoID
+
+        LEFT JOIN (
+            SELECT iVideoID, COUNT(*) AS comment_count
+            FROM comment
+            WHERE cStatus = 'A'
+            GROUP BY iVideoID
+        ) c ON v.iVideoID = c.iVideoID
+
+        LEFT JOIN user_liked_video ul
+            ON v.iVideoID = ul.iVideoID
+            AND ul.iUserID = $userid
+            AND ul.cStatus = 'A'
+
+        WHERE v.iFieldID = $fieldid
+        AND v.cStatus = 'A'
+        AND v.vTags LIKE '%$tag%'
+
+        GROUP BY v.iVideoID
+
+        ORDER BY v.iVideoID DESC
     ";
 
     $videoResult = sql_query($videoQuery);
 
     $videos = [];
     while ($row = sql_fetch_assoc($videoResult)) {
+        $row['like_count']    = (int)$row['like_count'];
+        $row['comment_count'] = (int)$row['comment_count'];
+        $row['isLiked']       = (bool)$row['isLiked'];
         $videos[] = $row;
     }
 

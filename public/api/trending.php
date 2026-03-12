@@ -26,7 +26,9 @@ try {
             v.*,
             COALESCE(w.watch_count, 0) AS watch_count,
             COALESCE(l.like_count, 0)  AS like_count,
-            (COALESCE(w.watch_count, 0) + COALESCE(l.like_count, 0)) AS popularity_score
+            COALESCE(c.comment_count, 0) AS comment_count,
+            (COALESCE(w.watch_count, 0) + COALESCE(l.like_count, 0)) AS popularity_score,
+            CASE WHEN ul.iUserID IS NOT NULL THEN 1 ELSE 0 END AS isLiked
         FROM videos v
 
         LEFT JOIN (
@@ -43,6 +45,18 @@ try {
             GROUP BY iVideoID
         ) l ON v.iVideoID = l.iVideoID
 
+        LEFT JOIN (
+            SELECT iVideoID, COUNT(*) AS comment_count
+            FROM comment
+            WHERE cStatus = 'A'
+            GROUP BY iVideoID
+        ) c ON v.iVideoID = c.iVideoID
+
+        LEFT JOIN user_liked_video ul
+            ON v.iVideoID = ul.iVideoID
+            AND ul.iUserID = $userid
+            AND ul.cStatus = 'A'
+
         WHERE v.cStatus = 'A'
 
         ORDER BY popularity_score DESC, watch_count DESC, like_count DESC
@@ -54,6 +68,10 @@ try {
 
     $videos = [];
     while ($row = sql_fetch_assoc($result)) {
+        $row['like_count']    = (int)$row['like_count'];
+        $row['comment_count'] = (int)$row['comment_count'];
+        $row['watch_count']   = (int)$row['watch_count'];
+        $row['isLiked']       = (bool)$row['isLiked'];
         $videos[] = $row;
     }
 
