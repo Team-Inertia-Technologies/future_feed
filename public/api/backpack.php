@@ -64,11 +64,27 @@ try {
     // Convert array to comma separated string
     $fieldIdList = implode(',', $fieldIds);
 
-    $videoQuery = "SELECT v.* FROM videos v LEFT JOIN user_watched_video uwv ON v.iVideoID = uwv.iVideoID AND uwv.iUserID = $userId AND uwv.cStatus = 'A'
-	WHERE v.iFieldID IN ($fieldIdList)
-	AND v.cStatus = 'A'
-	AND uwv.iVideoID IS NULL
-	ORDER BY RAND()
+    $videoQuery = "
+    SELECT 
+        v.*,
+        COUNT(DISTINCT vl.iAssocID) AS like_count,
+        COUNT(DISTINCT vc.iCommentID) AS comment_count
+    FROM videos v
+    LEFT JOIN user_watched_video uwv 
+        ON v.iVideoID = uwv.iVideoID 
+        AND uwv.iUserID = $userId 
+        AND uwv.cStatus = 'A'
+    LEFT JOIN user_liked_video vl 
+        ON v.iVideoID = vl.iVideoID 
+        AND vl.cStatus = 'A'
+    LEFT JOIN comment vc 
+        ON v.iVideoID = vc.iVideoID 
+        AND vc.cStatus = 'A'
+    WHERE v.iFieldID IN ($fieldIdList)
+    AND v.cStatus = 'A'
+    AND uwv.iVideoID IS NULL
+    GROUP BY v.iVideoID
+    ORDER BY RAND()
     LIMIT 8";
 
     $videoResult = sql_query($videoQuery);

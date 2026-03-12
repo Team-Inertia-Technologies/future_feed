@@ -25,20 +25,37 @@ $userId = DecodeParam($token);
 
 try {
 
-	$likedquery = "SELECT ula.iVideoID, v.vName, v.vDesc, v.vUrl, vCreator, v.iFieldID FROM user_liked_video ula JOIN videos v ON ula.iVideoID = v.iVideoID WHERE ula.iUserID = $userId AND ula.cStatus = 'A'";
+	$likedquery = "
+    SELECT 
+        ula.iVideoID, v.vName, v.vDesc, v.vUrl, v.vCreator, v.vThumbnail, v.iFieldID,
+        COUNT(DISTINCT vl.iAssocID) AS like_count,
+        COUNT(DISTINCT vc.iCommentID) AS comment_count
+    FROM user_liked_video ula
+    JOIN videos v ON ula.iVideoID = v.iVideoID
+    LEFT JOIN user_liked_video vl
+        ON v.iVideoID = vl.iVideoID
+        AND vl.cStatus = 'A'
+    LEFT JOIN comment vc
+        ON v.iVideoID = vc.iVideoID
+        AND vc.cStatus = 'A'
+    WHERE ula.iUserID = $userId
+    AND ula.cStatus = 'A'
+    GROUP BY ula.iVideoID, v.vName, v.vDesc, v.vUrl, v.vCreator, v.vThumbnail, v.iFieldID
+";
 	$likedResult = sql_query($likedquery);
 	$likedVideos = [];
 	while ($row = sql_fetch_assoc($likedResult)) {
 		$likedVideos[] = [
-			"VideoID" => (int)$row['iVideoID'],
-			"FieldID" => (int)$row['iFieldID'],
-			"Title" => $row['vName'],
-			"Thumbnail" => $row['vThumbnail'],
-			"Description" => $row['vDesc'],
-			"Url" => $row['vUrl'],
-			"ChannelName" => $row['vCreator'],
-			"isLiked" => true
-			
+			"VideoID"      => (int)$row['iVideoID'],
+			"FieldID"      => (int)$row['iFieldID'],
+			"Title"        => $row['vName'],
+			"Thumbnail"    => $row['vThumbnail'],
+			"Description"  => $row['vDesc'],
+			"Url"          => $row['vUrl'],
+			"ChannelName"  => $row['vCreator'],
+			"isLiked"      => true,
+			"like_count"   => (int)$row['like_count'],
+			"comment_count"=> (int)$row['comment_count'],
 		];
 	}
 

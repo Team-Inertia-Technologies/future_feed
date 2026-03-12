@@ -76,24 +76,35 @@ try {
     }
 
     $videoQuery = "
-        SELECT DISTINCT v.*
-        FROM videos v
+    SELECT DISTINCT v.*,
+        COUNT(DISTINCT vl.iAssocID) AS like_count,
+        COUNT(DISTINCT vc.iCommentID) AS comment_count
+    FROM videos v
 
-        LEFT JOIN user_watched_video uwv
-            ON v.iVideoID = uwv.iVideoID
-            AND uwv.iUserID = $userId
-            AND uwv.cStatus = 'A'
+    LEFT JOIN user_watched_video uwv
+        ON v.iVideoID = uwv.iVideoID
+        AND uwv.iUserID = $userId
+        AND uwv.cStatus = 'A'
 
-        WHERE v.cStatus = 'A'
-        AND uwv.iVideoID IS NULL
-        AND (
-            v.iFieldID IN ($fieldIdList)
-            $tagConditions
-        )
+    LEFT JOIN user_liked_video vl
+        ON v.iVideoID = vl.iVideoID
+        AND vl.cStatus = 'A'
 
-        ORDER BY RAND()
-        LIMIT 10
-    ";
+    LEFT JOIN comment vc
+        ON v.iVideoID = vc.iVideoID
+        AND vc.cStatus = 'A'
+
+    WHERE v.cStatus = 'A'
+    AND uwv.iVideoID IS NULL
+    AND (
+        v.iFieldID IN ($fieldIdList)
+        $tagConditions
+    )
+
+    GROUP BY v.iVideoID
+    ORDER BY RAND()
+    LIMIT 10
+";
 
     $videoResult = sql_query($videoQuery);
 

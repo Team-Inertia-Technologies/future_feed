@@ -30,11 +30,21 @@ $fieldid = (int)$fieldid;
 try {
 
     $videoQuery = "
-        SELECT * FROM videos
-        WHERE iFieldID = $fieldid
-        AND cStatus = 'A'
-        ORDER BY iVideoID DESC
-    ";
+    SELECT v.*,
+        COUNT(DISTINCT vl.iAssocID) AS like_count,
+        COUNT(DISTINCT vc.iCommentID) AS comment_count
+    FROM videos v
+    LEFT JOIN user_liked_video vl
+        ON v.iVideoID = vl.iVideoID
+        AND vl.cStatus = 'A'
+    LEFT JOIN comment vc
+        ON v.iVideoID = vc.iVideoID
+        AND vc.cStatus = 'A'
+    WHERE v.iFieldID = $fieldid
+    AND v.cStatus = 'A'
+    GROUP BY v.iVideoID
+    ORDER BY v.iVideoID DESC
+";
     $videoResult = sql_query($videoQuery);
 
     $videos  = [];
