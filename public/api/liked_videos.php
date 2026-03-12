@@ -27,7 +27,7 @@ try {
 
 	$likedquery = "
     SELECT 
-        ula.iVideoID, v.vName, v.vDesc, v.vUrl, v.vCreator, v.vThumbnail, v.iFieldID,
+        ula.iVideoID, v.vName, v.vDesc, v.vUrl, v.vCreator, v.iFieldID,
         COUNT(DISTINCT vl.iAssocID) AS like_count,
         COUNT(DISTINCT vc.iCommentID) AS comment_count
     FROM user_liked_video ula
@@ -40,7 +40,7 @@ try {
         AND vc.cStatus = 'A'
     WHERE ula.iUserID = $userId
     AND ula.cStatus = 'A'
-    GROUP BY ula.iVideoID, v.vName, v.vDesc, v.vUrl, v.vCreator, v.vThumbnail, v.iFieldID
+    GROUP BY ula.iVideoID, v.vName, v.vDesc, v.vUrl, v.vCreator, v.iFieldID
 ";
 	$likedResult = sql_query($likedquery);
 	$likedVideos = [];
@@ -49,7 +49,6 @@ try {
 			"VideoID"      => (int)$row['iVideoID'],
 			"FieldID"      => (int)$row['iFieldID'],
 			"Title"        => $row['vName'],
-			"Thumbnail"    => $row['vThumbnail'],
 			"Description"  => $row['vDesc'],
 			"Url"          => $row['vUrl'],
 			"ChannelName"  => $row['vCreator'],
