@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } elseif ($new_password !== $confirm_password) {
         $error = "Passwords do not match.";
     } else {
-        $hashed_password = rtrim(base64_encode(md5($new_password, true)), '=');
+        $hashed_password = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(md5($new_password, true)));
 
         sql_query("UPDATE user SET vPassword = '$hashed_password' WHERE iUserID = '$user_id'");
         sql_query("UPDATE password_resets SET cStatus = 'U' WHERE vToken = '$token_escaped'");
