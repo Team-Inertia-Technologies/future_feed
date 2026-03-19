@@ -13,7 +13,7 @@ $phone    = $request['phone'];
 $apple_id = $request['apple_id'];
 
 $q = "SELECT iUserID FROM user 
-      WHERE vPhone = '" . db_input($phone) . "' 
+      WHERE vMobile = '" . db_input($phone) . "' 
       AND cStatus = 'A' LIMIT 1";
 $r = sql_query($q, 'LINK.APPLE.1');
 
