@@ -264,7 +264,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
                 echo json_encode([
                     "statusCode" => 201,
                     "error" => [
-                        "message" => "Do you have an existing account? Enter your phone number to link your Apple ID.",
+                        "message" => "Do you have an existing account? Enter your phone number to link your Apple ID. If not, click on Sign Up to create a new account.",
                         "data" => [
                             "email"    => $appleEmail,
                             "apple_id" => $appleId,
