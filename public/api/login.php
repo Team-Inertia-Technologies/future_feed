@@ -264,9 +264,8 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
                 echo json_encode([
                     "statusCode" => 201,
                     "error" => [
-                        "message" => "No account found. Please register first.",
+                        "message" => "Do you have an existing account? Enter your phone number to link your Apple ID.",
                         "data" => [
-                            "name"     => $appleName,
                             "email"    => $appleEmail,
                             "apple_id" => $appleId,
                         ]
