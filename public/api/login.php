@@ -5,6 +5,9 @@ $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../includes/common_api.php";
 require_once "../vendor/autoload.php";
 
+use Firebase\JWT\JWT;
+use Firebase\JWT\JWK;
+
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
@@ -149,6 +152,181 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
             echo json_encode([
                 "statusCode" => 401,
                 "error" => ["message" => "Google authentication failed: " . $e->getMessage()]
+            ]);
+            exit;
+        }
+    }
+
+    // ============================================
+    // APPLE SSO LOGIN
+    // ============================================
+    elseif ($loginType === 'apple') {
+
+        
+        if (empty($request['apple_token'])) {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "statusCode" => 400,
+                "error" => ["message" => "Apple identity token is required"]
+            ]);
+            exit;
+        }
+
+        $appleClientId = 'com.futurefeed';
+
+        try {
+            // 1. Fetch Apple's public keys (JWKS)
+            $appleKeysJson = file_get_contents('https://appleid.apple.com/auth/keys');
+            if (!$appleKeysJson) {
+                throw new Exception('Failed to fetch Apple public keys');
+            }
+            $appleKeys = json_decode($appleKeysJson, true);
+
+            // 2. Decode token header to find which key Apple used to sign it
+            $identityToken = $request['apple_token'];
+            $tokenParts    = explode('.', $identityToken);
+
+            if (count($tokenParts) !== 3) {
+                throw new Exception('Invalid Apple identity token format');
+            }
+
+            $headerJson = base64_decode(
+                str_pad(strtr($tokenParts[0], '-_', '+/'), strlen($tokenParts[0]) % 4, '=', STR_PAD_RIGHT)
+            );
+            $header = json_decode($headerJson, true);
+            $kid    = $header['kid'] ?? null;
+
+            if (!$kid) {
+                throw new Exception('No key ID in Apple token header');
+            }
+
+            // 3. Find the matching key from Apple's public JWKS
+            $matchingKey = null;
+            foreach ($appleKeys['keys'] as $key) {
+                if ($key['kid'] === $kid) {
+                    $matchingKey = $key;
+                    break;
+                }
+            }
+
+            if (!$matchingKey) {
+                throw new Exception('No matching Apple public key found');
+            }
+
+            // 4. Parse the JWK and verify the JWT
+            $publicKey = JWK::parseKey($matchingKey, 'RS256');
+            $payload   = JWT::decode($identityToken, $publicKey);
+
+            // 5. Validate standard claims
+            if ($payload->iss !== 'https://appleid.apple.com') {
+                throw new Exception('Invalid token issuer');
+            }
+            if ($payload->aud !== $appleClientId) {
+                throw new Exception('Token audience mismatch');
+            }
+            if ($payload->exp < time()) {
+                throw new Exception('Apple token has expired');
+            }
+
+            // 6. Extract user data
+            // 'sub' is the stable unique Apple User ID — never changes
+            $appleId   = $payload->sub;
+            $appleEmail = $payload->email ?? null;
+            $appleName  = $request['name'] ?? '';
+
+            // 7. Look up user — search by Apple ID first (handles hidden email case)
+            if (!empty($appleEmail)) {
+                $q = "SELECT iUserID, vName, vEmail, dDOB, vPic 
+                    FROM user 
+                    WHERE (vEmail='" . db_input($appleEmail) . "' OR vAppleID='" . db_input($appleId) . "')
+                    AND cStatus='A' LIMIT 1";
+            } else {
+                $q = "SELECT iUserID, vName, vEmail, dDOB, vPic 
+                    FROM user 
+                    WHERE vAppleID='" . db_input($appleId) . "' AND cStatus='A' LIMIT 1";
+            }
+
+            $r = sql_query($q, 'AUTH.APPLE.1');
+
+            if (sql_num_rows($r)) {
+                // Existing user — make sure vAppleID is stored
+                list($u_id, $u_name, $u_email, $dob, $pic) = sql_fetch_row($r);
+                sql_query(
+                    "UPDATE user SET vAppleID='" . db_input($appleId) . "' WHERE iUserID=$u_id",
+                    'AUTH.APPLE.2'
+                );
+
+            } else {
+                // No matching account — send back to frontend for registration
+                http_response_code(201);
+                header('Content-Type: application/json');
+                echo json_encode([
+                    "statusCode" => 201,
+                    "error" => [
+                        "message" => "No account found. Please register first.",
+                        "data" => [
+                            "name"     => $appleName,
+                            "email"    => $appleEmail,
+                            "apple_id" => $appleId,
+                        ]
+                    ]
+                ]);
+                exit;
+            }
+
+            // 8. Create session — identical to your Google/email flow
+            session_destroy();
+            session_start();
+            session_regenerate_id();
+
+            $randomtoken = base64_encode(uniqid(rand(), true));
+
+            $_SESSION[PROJ_SESSION_ID] = new userdat;
+            $_SESSION[PROJ_SESSION_ID]->log_time          = NOW2;
+            $_SESSION[PROJ_SESSION_ID]->log_stat          = "A";
+            $_SESSION[PROJ_SESSION_ID]->user_id           = $u_id;
+            $_SESSION[PROJ_SESSION_ID]->user_name         = $u_name;
+            $_SESSION[PROJ_SESSION_ID]->sess              = session_id();
+            $_SESSION[PROJ_SESSION_ID]->rmadr             = $_SERVER['REMOTE_ADDR'];
+            $_SESSION[PROJ_SESSION_ID]->lhs_menu          = true;
+            $_SESSION[PROJ_SESSION_ID]->sess_token        = $randomtoken;
+            $_SESSION[PROJ_SESSION_ID]->sess_active       = 'Y';
+            $_SESSION[PROJ_SESSION_ID]->allow_vessel_close = 'N';
+
+            LogAttempt($appleEmail ?? $appleId, 'S', 'Logged via Apple');
+
+            sql_query(
+                "UPDATE user SET cActive='Y', dtLastLogin='" . NOW . "', vLastLoginIP='" . $_SERVER['REMOTE_ADDR'] . "' WHERE iUserID=$u_id",
+                'AUTH.APPLE.3'
+            );
+
+            $token     = EncodeParam($u_id);
+            $exists    = GetXFromYID("SELECT iUserID FROM user_field_assoc WHERE iUserID = $u_id LIMIT 1", "USER.FIELD.CHECK");
+            $hasFields = ($exists) ? true : false;
+
+            http_response_code(200);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "statusCode" => 200,
+                "data" => [
+                    "token"      => $token,
+                    "userName"   => $u_name,
+                    "email"      => $u_email,
+                    "DOB"        => $dob,
+                    "loginType"  => "apple",
+                    "hasFields"  => $hasFields,
+                    "profilePic" => !empty($pic) ? "https://futurefeed.top/uploads/profile_pics/" . $pic : null
+                ]
+            ]);
+            exit;
+
+        } catch (Exception $e) {
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "statusCode" => 401,
+                "error" => ["message" => "Apple authentication failed: " . $e->getMessage()]
             ]);
             exit;
         }
