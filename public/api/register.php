@@ -3,6 +3,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../includes/common_api.php";
+require_once "../vendor/autoload.php";
 use Firebase\JWT\JWT;
 use Firebase\JWT\JWK;
 header('Content-Type: application/json');
