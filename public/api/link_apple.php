@@ -1,6 +1,6 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 0);
+ini_set('display_errors', 1);
 $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../includes/common_api.php";
 header('Content-Type: application/json');
@@ -11,7 +11,8 @@ $_REQUEST = array_merge($_REQUEST, $request ?? []);
 
 $phone    = $request['phone'];
 $apple_id = $request['apple_id'];
-
+echo $phone . " - " . $apple_id;
+exit;
 $q = "SELECT iUserID FROM user 
       WHERE vMobile = '" . db_input($phone) . "' 
       AND cStatus = 'A' LIMIT 1";
