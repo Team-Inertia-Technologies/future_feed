@@ -43,7 +43,7 @@ if ($google_token !== '') {
         respond(401, ["statusCode" => 401, "error" => ["message" => "Invalid Google token: " . ($gdata['error_description'] ?? 'no email returned')]]);
     }
 
-    if ($gdata['aud'] !== '856248388214-8obo2cg3s0i59cc1e1btsqi4vfhnrppg.apps.googleusercontent.com') {
+    if ($gdata['aud'] !== '595789305816-7mv597ph6jmmt80p4737h05tkjf9cldo.apps.googleusercontent.com') {
         respond(401, ["statusCode" => 401, "error" => ["message" => "Token audience mismatch"]]);
     }
 
