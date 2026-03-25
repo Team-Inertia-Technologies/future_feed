@@ -66,7 +66,7 @@ try {
        VERIFY VIDEO EXISTS
     ================================= */
     $video_query = sql_query("
-        SELECT iVideoID, vName 
+        SELECT iVideoID, vDesc 
         FROM videos
         WHERE iVideoID = '$videoid' 
         AND   cStatus  = 'A' 
@@ -78,7 +78,7 @@ try {
     }
 
     $video       = sql_fetch_assoc($video_query);
-    $video_title = $video['vName'];
+    $video_title = $video['vDesc'];
 
     /* ===============================
        CHECK: ALREADY REPORTED
