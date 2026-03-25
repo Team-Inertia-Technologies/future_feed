@@ -67,7 +67,7 @@ try {
     ================================= */
     $video_query = sql_query("
         SELECT iVideoID, vTitle 
-        FROM video 
+        FROM videos
         WHERE iVideoID = '$videoid' 
         AND   cStatus  = 'A' 
         LIMIT 1
