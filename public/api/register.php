@@ -160,28 +160,48 @@ $password  = htmlspecialchars_decode(isset($_REQUEST['password'])  ? trim($_REQU
 $mobile    = isset($_REQUEST['mobile'])    ? trim($_REQUEST['mobile'])    : '';
 $DOB       = date('Y-m-d', strtotime(isset($_REQUEST['DOB'])       ? trim($_REQUEST['DOB'])       : ''));
 $google_id = isset($_REQUEST['google_id']) ? trim($_REQUEST['google_id']) : '';
-$apple_id  = isset($_REQUEST['apple_id'])  ? trim($_REQUEST['apple_id'])  : '';  // ← ADD THIS
+$apple_id  = isset($_REQUEST['apple_id'])  ? trim($_REQUEST['apple_id'])  : '';
 $picture   = isset($_REQUEST['pic'])       ? trim($_REQUEST['pic'])       : '';
 
-// For Apple registration — email is optional since Apple may hide it
-// For Google/Email — email is required
-// $is_apple_reg = !empty($apple_id) && empty($google_id);
+$is_apple = !empty($apple_id) && empty($google_id);
 
-if ($name === '' || $password === '' || $mobile === '' || $DOB === '') {
-    respond(400, ["statusCode" => 400, "error" => ["message" => "All fields are required"]]);
+/* ===============================
+   VALIDATION
+================================= */
+// Mobile + DOB required for everyone
+if ($mobile === '') {
+    respond(400, ["statusCode" => 400, "error" => ["message" => "Mobile number is required"]]);
+}
+if (empty($_REQUEST['DOB'])) {
+    respond(400, ["statusCode" => 400, "error" => ["message" => "Date of birth is required"]]);
 }
 
-// Only validate email if not Apple OR if email was provided
-if ($email === '') {
-    respond(400, ["statusCode" => 400, "error" => ["message" => "Email is required"]]);
-}
-
-if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    respond(400, ["statusCode" => 400, "error" => ["message" => "Invalid email address."]]);
-}
-
-// Check duplicate email only if email provided
-if ($email !== '') {
+if ($is_apple) {
+    // Apple — skip name, email, password checks
+    // Email may or may not be provided (Apple can hide it)
+    if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        respond(400, ["statusCode" => 400, "error" => ["message" => "Invalid email address."]]);
+    }
+    if ($email !== '') {
+        $existing_id = GetXFromYID("SELECT iUserID FROM user WHERE vEmail = '" . db_input($email) . "' LIMIT 1");
+        if (!empty($existing_id)) {
+            respond(409, ["statusCode" => 409, "error" => ["message" => "An account with this email already exists. Please log in."]]);
+        }
+    }
+} else {
+    // Google / Email registration — full validation
+    if ($name === '') {
+        respond(400, ["statusCode" => 400, "error" => ["message" => "Name is required"]]);
+    }
+    if ($password === '') {
+        respond(400, ["statusCode" => 400, "error" => ["message" => "Password is required"]]);
+    }
+    if ($email === '') {
+        respond(400, ["statusCode" => 400, "error" => ["message" => "Email is required"]]);
+    }
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        respond(400, ["statusCode" => 400, "error" => ["message" => "Invalid email address."]]);
+    }
     $existing_id = GetXFromYID("SELECT iUserID FROM user WHERE vEmail = '" . db_input($email) . "' LIMIT 1");
     if (!empty($existing_id)) {
         respond(409, ["statusCode" => 409, "error" => ["message" => "An account with this email already exists. Please log in."]]);
@@ -196,10 +216,9 @@ try {
     $password_esc = db_input($password);
     $mobile_esc   = db_input($mobile);
     $google_esc   = db_input($google_id);
-    $apple_esc    = db_input($apple_id);   // ← ADD THIS
+    $apple_esc    = db_input($apple_id);
     $picture_esc  = db_input($picture);
 
-    // ← ADD vAppleID to the INSERT
     $q = "INSERT INTO user
               (iUserID, vName, vEmail, vPassword, vMobile, dDOB, vGoogleID, vAppleID, vPic, cStatus, cEmailVerified)
           VALUES
@@ -209,12 +228,30 @@ try {
         respond(500, ["statusCode" => 500, "error" => ["message" => "Failed to register user"]]);
     }
 
+    // Apple — skip OTP and email entirely
+    if ($is_apple) {
+        respond(200, [
+            "statusCode" => 200,
+            "data" => [
+                "token"         => EncodeParam($id),
+                "userName"      => $name,
+                "hasFields"     => false,
+                "emailVerified" => true,
+                "emailSent"     => false,
+            ]
+        ]);
+    }
+
+    /* ===============================
+       OTP + VERIFICATION EMAIL (Google / Email only)
+    ================================= */
     $otp        = str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
+    $otp_hash   = password_hash($otp, PASSWORD_BCRYPT);
     $expires_at = date('Y-m-d H:i:s', strtotime('+10 minutes'));
 
     sql_query("UPDATE email_otps SET cStatus = 'U' WHERE iUserID = '$id'");
     sql_query("INSERT INTO email_otps (iUserID, vOTP, dExpiresAt, cStatus)
-               VALUES ('$id', '$otp', '$expires_at', 'A')");
+               VALUES ('$id', '$otp_hash', '$expires_at', 'A')");
 
     $site_title = "Future Feed";
     $year       = date('Y');
