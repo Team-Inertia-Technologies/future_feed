@@ -45,7 +45,7 @@ try {
 		exit;
 	} 
 	if ($mode === 'View') {
-		$query = "SELECT c.iCommentID, c.vComment, u.vName, c.dtAdded FROM comment c JOIN user u ON c.iUserID = u.iUserID WHERE c.iVideoID = $videoID AND cStatus = 'A' ORDER BY c.dtAdded DESC ";
+		$query = "SELECT c.iCommentID, c.vComment, u.vName, c.dtAdded FROM comment c JOIN user u ON c.iUserID = u.iUserID WHERE c.iVideoID = $videoID AND c.cStatus = 'A' ORDER BY c.dtAdded DESC ";
 		$result = sql_query($query);
 		$comments = [];
 		while ($row = sql_fetch_assoc($result)) {
