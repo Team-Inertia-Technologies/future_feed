@@ -161,7 +161,7 @@ try {
               <!-- Heading -->
               <p style='margin:0 0 10px; font-size:24px; font-weight:700;
                         color:#ffffff; letter-spacing:-0.3px;'>
-                Video Report Received
+                Comment Report Received
               </p>
 
               <!-- Subtitle -->
