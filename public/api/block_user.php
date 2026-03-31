@@ -51,7 +51,6 @@ try {
         UPDATE comment
         SET cStatus = 'B'
         WHERE iCommentID = $CommentID
-        AND iUserID = $userid
     ";
     sql_query($query);
 
