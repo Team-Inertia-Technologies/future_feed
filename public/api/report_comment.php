@@ -108,7 +108,7 @@ try {
     /* ===============================
        SEND ADMIN EMAIL
     ================================= */
-    $admin_email = "myron@teaminertia.com";
+    $admin_email = "yogesh.shirodkar@teaminertia.com";
     $site_title  = "Future Feed";
     $year = date('Y');
     $formatted_date = date('F d, Y \a\t h:i A', strtotime($reported_at));

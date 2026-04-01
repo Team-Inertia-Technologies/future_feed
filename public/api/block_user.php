@@ -59,7 +59,7 @@ try {
    SEND ADMIN EMAIL (USER BLOCKED)
 ================================= */
 
-$admin_email   = "myron@teaminertia.com";
+$admin_email   = "yogesh.shirodkar@teaminertia.com";
 $site_title    = "Future Feed";
 $year          = date('Y');
 
