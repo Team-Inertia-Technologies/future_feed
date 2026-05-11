@@ -40,7 +40,7 @@ try {
         $myFields[] = array(
             "fieldID"   => $row['iFieldID'],
             "name"      => $row['vName'],
-            "icon"      => "https://ti-stage-projects-future-feed.krjqe5.easypanel.host/uploads/" . rawurlencode($row['vFile']),
+            "icon"      => "https://futurefeed.top/uploads/" . rawurlencode($row['vFile']),
         );
     }
 
@@ -65,7 +65,7 @@ try {
         $exploreFields[] = array(
             "fieldID"   => $row['iFieldID'],
             "name"      => $row['vName'],
-            "icon"      => "https://ti-stage-projects-future-feed.krjqe5.easypanel.host/uploads/" . rawurlencode($row['vFile']),
+            "icon"      => "https://futurefeed.top/uploads/" . rawurlencode($row['vFile']),
         );
     }
 
