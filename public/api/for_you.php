@@ -76,41 +76,50 @@ try {
     }
 
     $videoQuery = "
-        SELECT DISTINCT v.*,
-            COUNT(DISTINCT vl.iAssocID) AS like_count,
-            COUNT(DISTINCT vc.iCommentID) AS comment_count,
-            CASE WHEN ul.iUserID IS NOT NULL THEN 1 ELSE 0 END AS isLiked
-        FROM videos v
+    SELECT 
+        v.*,
+        (
+            SELECT COUNT(*)
+            FROM user_liked_video ulv
+            WHERE ulv.iVideoID = v.iVideoID
+            AND ulv.cStatus = 'A'
+        ) AS like_count,
 
-        LEFT JOIN user_watched_video uwv
-            ON v.iVideoID = uwv.iVideoID
-            AND uwv.iUserID = $userId
-            AND uwv.cStatus = 'A'
+        (
+            SELECT COUNT(*)
+            FROM comment c
+            WHERE c.iVideoID = v.iVideoID
+            AND c.cStatus = 'A'
+        ) AS comment_count,
 
-        LEFT JOIN user_liked_video vl
-            ON v.iVideoID = vl.iVideoID
-            AND vl.cStatus = 'A'
-
-        LEFT JOIN comment vc
-            ON v.iVideoID = vc.iVideoID
-            AND vc.cStatus = 'A'
-
-        LEFT JOIN user_liked_video ul
-            ON v.iVideoID = ul.iVideoID
+        EXISTS(
+            SELECT 1
+            FROM user_liked_video ul
+            WHERE ul.iVideoID = v.iVideoID
             AND ul.iUserID = $userId
             AND ul.cStatus = 'A'
+        ) AS isLiked
 
-        WHERE v.cStatus = 'A'
-        AND uwv.iVideoID IS NULL
-        AND (
-            v.iFieldID IN ($fieldIdList)
-            $tagConditions
-        )
+    FROM videos v
 
-        GROUP BY v.iVideoID
-        ORDER BY RAND()
-        LIMIT 10
-    ";
+    WHERE v.cStatus = 'A'
+
+    AND NOT EXISTS (
+        SELECT 1
+        FROM user_watched_video uwv
+        WHERE uwv.iVideoID = v.iVideoID
+        AND uwv.iUserID = $userId
+        AND uwv.cStatus = 'A'
+    )
+
+    AND (
+        v.iFieldID IN ($fieldIdList)
+        $tagConditions
+    )
+
+    ORDER BY v.iVideoID DESC
+    LIMIT 10
+";
 
     $videoResult = sql_query($videoQuery);
 
