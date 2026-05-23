@@ -51,7 +51,7 @@ try {
                 AND uwv.iUserID  = $userId
                 AND uwv.cStatus  = 'A'
           )
-        LIMIT 8
+        LIMIT 80
     ");
 
     $candidateIds = [];
