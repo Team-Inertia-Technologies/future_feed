@@ -28,151 +28,170 @@ try {
     // ── 1. Field IDs (APCu cached 5 min) ─────────────────────────────────────
     $cacheKey = "user_fields_{$userId}";
     $fieldIds = false;
-    if (function_exists('apcu_fetch')) {
-        $fieldIds = apcu_fetch($cacheKey);
-    }
+    if (function_exists('apcu_fetch')) $fieldIds = apcu_fetch($cacheKey);
     if ($fieldIds === false) {
-        $res = sql_query("SELECT iFieldID FROM user_field_assoc
-                          WHERE iUserID = $userId AND cStatus = 'A'");
+        $res = sql_query("SELECT iFieldID FROM user_field_assoc WHERE iUserID = $userId AND cStatus = 'A'");
         $fieldIds = [];
-        while ($row = sql_fetch_assoc($res)) {
-            $fieldIds[] = (int) $row['iFieldID'];
-        }
-        if (function_exists('apcu_store')) {
-            apcu_store($cacheKey, $fieldIds, 300);
-        }
+        while ($row = sql_fetch_assoc($res)) $fieldIds[] = (int) $row['iFieldID'];
+        if (function_exists('apcu_store')) apcu_store($cacheKey, $fieldIds, 300);
     }
 
     if (empty($fieldIds)) {
-        echo json_encode([
-            "statusCode" => 200,
-            "data"       => ["videos" => [], "message" => "No field interests found for user"]
-        ]);
+        echo json_encode(["statusCode" => 200, "data" => ["videos" => [], "message" => "No field interests found for user"]]);
         exit;
     }
 
     $fieldIdList = implode(',', $fieldIds);
 
-    // ── 2. Collect unique tags (APCu cached 10 min per user) ─────────────────
-    //    The tag scan only touches the videos table — still cheap — but we cache
-    //    it so repeat requests don't re-scan 2,864 video rows every time.
+    // ── 2. Collect unique tags (APCu cached 10 min) ───────────────────────────
     $tagCacheKey = "user_tags_{$userId}";
-    $allTags     = false;
-    if (function_exists('apcu_fetch')) {
-        $allTags = apcu_fetch($tagCacheKey);
-    }
+    $allTags = false;
+    if (function_exists('apcu_fetch')) $allTags = apcu_fetch($tagCacheKey);
     if ($allTags === false) {
-        $tagResult = sql_query("
-            SELECT vTags
-            FROM videos
-            WHERE iFieldID IN ($fieldIdList)
-              AND cStatus = 'A'
-              AND vTags IS NOT NULL
-              AND vTags != ''
-        ");
+        $tagResult = sql_query("SELECT vTags FROM videos WHERE iFieldID IN ($fieldIdList) AND cStatus = 'A' AND vTags IS NOT NULL AND vTags != ''");
         $allTags = [];
         while ($row = sql_fetch_assoc($tagResult)) {
             foreach (explode(',', $row['vTags']) as $tag) {
                 $clean = trim(str_replace(['"', "'"], '', $tag));
-                if ($clean !== '') {
-                    $allTags[] = db_input($clean);
-                }
+                if ($clean !== '') $allTags[] = db_input($clean);
             }
         }
         $allTags = array_values(array_unique($allTags));
-        if (function_exists('apcu_store')) {
-            apcu_store($tagCacheKey, $allTags, 600);
-        }
+        if (function_exists('apcu_store')) apcu_store($tagCacheKey, $allTags, 600);
     }
 
-    // ── 3. Candidate ID pool — IDs only, no heavy joins ──────────────────────
-    //    Split into two cheap queries and merge in PHP:
-    //      A) videos matching user's field IDs  (index seek on iFieldID)
-    //      B) videos matching tags              (LIKE scan, unavoidable, but
-    //                                            limited to unwatched rows only)
-    //    Each query returns only iVideoID integers — tiny result set to transfer.
-    //    We cap each at 80 rows so the LIKE scan never explodes.
-
-    $watchedExclude = "
-        NOT EXISTS (
-            SELECT 1 FROM user_watched_video uwv
-            WHERE uwv.iVideoID = v.iVideoID
-              AND uwv.iUserID  = $userId
-              AND uwv.cStatus  = 'A'
-        )
-    ";
-
-    // --- 3a. Field-match candidates (fast — uses index) ----------------------
-    $fieldCandidates = [];
-    $res = sql_query("
-        SELECT v.iVideoID
+    // ── 3. Get total count of eligible videos so we can random-offset ─────────
+    //    This is a fast COUNT on the index — no row data transferred.
+    $countRow = sql_fetch_assoc(sql_query("
+        SELECT COUNT(*) AS total
         FROM videos v
         WHERE v.iFieldID IN ($fieldIdList)
           AND v.cStatus = 'A'
-          AND $watchedExclude
-        LIMIT 80
-    ");
-    while ($row = sql_fetch_assoc($res)) {
-        $fieldCandidates[] = (int) $row['iVideoID'];
-    }
+          AND NOT EXISTS (
+              SELECT 1 FROM user_watched_video uwv
+              WHERE uwv.iVideoID = v.iVideoID
+                AND uwv.iUserID  = $userId
+                AND uwv.cStatus  = 'A'
+          )
+    "));
+    $totalEligible = (int)($countRow['total'] ?? 0);
 
-    // --- 3b. Tag-match candidates (LIKE scan — keep pool small) --------------
-    $tagCandidates = [];
-    if (!empty($allTags)) {
-        // Limit to 20 tags max to keep the OR chain manageable.
-        // Shuffle so different tags get a chance each request.
-        shuffle($allTags);
-        $activeTags  = array_slice($allTags, 0, 20);
-        $tagLikes    = array_map(fn($t) => "v.vTags LIKE '%$t%'", $activeTags);
-        $tagWhere    = implode(' OR ', $tagLikes);
+    // ── 4. Field-match candidates via random OFFSETs ──────────────────────────
+    //    Instead of LIMIT 80 from the top (same creator every time), we jump to
+    //    several random positions in the result set and take a few rows each.
+    //    5 jumps × 16 rows = 80 candidates spread across the whole table.
+    $fieldCandidates = [];
 
-        $res = sql_query("
-            SELECT v.iVideoID
-            FROM videos v
-            WHERE v.cStatus = 'A'
-              AND ($tagWhere)
-              AND $watchedExclude
-            LIMIT 80
-        ");
-        while ($row = sql_fetch_assoc($res)) {
-            $tagCandidates[] = (int) $row['iVideoID'];
+    if ($totalEligible > 0) {
+        $jumps    = 5;
+        $perJump  = 16;
+        $offsets  = [];
+
+        // Generate unique random offsets spread across the eligible range
+        $attempts = 0;
+        while (count($offsets) < $jumps && $attempts < 20) {
+            $o = rand(0, max(0, $totalEligible - $perJump));
+            if (!in_array($o, $offsets)) $offsets[] = $o;
+            $attempts++;
+        }
+
+        foreach ($offsets as $offset) {
+            $res = sql_query("
+                SELECT v.iVideoID
+                FROM videos v
+                WHERE v.iFieldID IN ($fieldIdList)
+                  AND v.cStatus = 'A'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM user_watched_video uwv
+                      WHERE uwv.iVideoID = v.iVideoID
+                        AND uwv.iUserID  = $userId
+                        AND uwv.cStatus  = 'A'
+                  )
+                LIMIT $perJump OFFSET $offset
+            ");
+            while ($row = sql_fetch_assoc($res)) {
+                $fieldCandidates[] = (int) $row['iVideoID'];
+            }
         }
     }
 
-    // ── 4. Merge, deduplicate, shuffle in PHP — zero DB cost ─────────────────
-    $allCandidates = array_values(array_unique(
-        array_merge($fieldCandidates, $tagCandidates)
-    ));
+    // ── 5. Tag-match candidates — same random-offset approach ─────────────────
+    $tagCandidates = [];
+    if (!empty($allTags)) {
+        shuffle($allTags);
+        $activeTags = array_slice($allTags, 0, 20);
+        $tagLikes   = array_map(fn($t) => "v.vTags LIKE '%$t%'", $activeTags);
+        $tagWhere   = implode(' OR ', $tagLikes);
+
+        // Count tag-eligible rows for offset range
+        $tagCountRow = sql_fetch_assoc(sql_query("
+            SELECT COUNT(*) AS total
+            FROM videos v
+            WHERE v.cStatus = 'A'
+              AND ($tagWhere)
+              AND NOT EXISTS (
+                  SELECT 1 FROM user_watched_video uwv
+                  WHERE uwv.iVideoID = v.iVideoID
+                    AND uwv.iUserID  = $userId
+                    AND uwv.cStatus  = 'A'
+              )
+        "));
+        $totalTagEligible = (int)($tagCountRow['total'] ?? 0);
+
+        if ($totalTagEligible > 0) {
+            $tagJumps   = 3;
+            $tagPerJump = 14;
+            $tagOffsets = [];
+            $attempts   = 0;
+            while (count($tagOffsets) < $tagJumps && $attempts < 15) {
+                $o = rand(0, max(0, $totalTagEligible - $tagPerJump));
+                if (!in_array($o, $tagOffsets)) $tagOffsets[] = $o;
+                $attempts++;
+            }
+
+            foreach ($tagOffsets as $offset) {
+                $res = sql_query("
+                    SELECT v.iVideoID
+                    FROM videos v
+                    WHERE v.cStatus = 'A'
+                      AND ($tagWhere)
+                      AND NOT EXISTS (
+                          SELECT 1 FROM user_watched_video uwv
+                          WHERE uwv.iVideoID = v.iVideoID
+                            AND uwv.iUserID  = $userId
+                            AND uwv.cStatus  = 'A'
+                      )
+                    LIMIT $tagPerJump OFFSET $offset
+                ");
+                while ($row = sql_fetch_assoc($res)) {
+                    $tagCandidates[] = (int) $row['iVideoID'];
+                }
+            }
+        }
+    }
+
+    // ── 6. Merge, deduplicate, shuffle in PHP ─────────────────────────────────
+    $allCandidates = array_values(array_unique(array_merge($fieldCandidates, $tagCandidates)));
 
     if (empty($allCandidates)) {
-        echo json_encode([
-            "statusCode" => 200,
-            "data"       => ["videos" => [], "total" => 0]
-        ]);
+        echo json_encode(["statusCode" => 200, "data" => ["videos" => [], "total" => 0]]);
         exit;
     }
 
-    shuffle($allCandidates);               // true random, free in PHP
-    $picked      = array_slice($allCandidates, 0, 10);
-    $pickedList  = implode(',', $picked);
+    shuffle($allCandidates);
+    $picked     = array_slice($allCandidates, 0, 10);
+    $pickedList = implode(',', $picked);
 
-    // ── 5. Fetch full data for exactly those 10 rows (PK lookups — instant) ──
+    // ── 7. Fetch full data for exactly those 10 rows (PK lookups — instant) ───
     $videoResult = sql_query("
         SELECT
             v.*,
-            COALESCE((
-                SELECT COUNT(*)
-                FROM user_liked_video vl
-                WHERE vl.iVideoID = v.iVideoID AND vl.cStatus = 'A'
-            ), 0) AS like_count,
-            COALESCE((
-                SELECT COUNT(*)
-                FROM comment vc
-                WHERE vc.iVideoID = v.iVideoID AND vc.cStatus = 'A'
-            ), 0) AS comment_count,
+            (SELECT COUNT(*) FROM user_liked_video vl
+             WHERE vl.iVideoID = v.iVideoID AND vl.cStatus = 'A') AS like_count,
+            (SELECT COUNT(*) FROM comment vc
+             WHERE vc.iVideoID = v.iVideoID AND vc.cStatus = 'A') AS comment_count,
             EXISTS (
-                SELECT 1
-                FROM user_liked_video ul
+                SELECT 1 FROM user_liked_video ul
                 WHERE ul.iVideoID = v.iVideoID
                   AND ul.iUserID  = $userId
                   AND ul.cStatus  = 'A'
@@ -189,12 +208,9 @@ try {
         $videos[] = $row;
     }
 
-    shuffle($videos); // re-shuffle since IN() doesn't guarantee order
+    shuffle($videos);
 
-    echo json_encode([
-        "statusCode" => 200,
-        "data"       => ["videos" => $videos, "total" => count($videos)]
-    ]);
+    echo json_encode(["statusCode" => 200, "data" => ["videos" => $videos, "total" => count($videos)]]);
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(["statusCode" => 500, "error" => ["message" => $e->getMessage()]]);
