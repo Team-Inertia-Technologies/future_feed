@@ -38,10 +38,9 @@ try {
 
     $fieldIdList = implode(',', $fieldIds);
 
-    // 2. Fetch a pool of 80 candidate IDs cheaply — no joins, just index seeks
-    //    NOT EXISTS on (iUserID, iVideoID, cStatus) index = microseconds per row
-    $idResult = sql_query("
-        SELECT v.iVideoID
+    // 2. COUNT eligible videos — fast index scan, no row data fetched
+    $countRow      = sql_fetch_assoc(sql_query("
+        SELECT COUNT(*) AS total
         FROM videos v
         WHERE v.iFieldID IN ($fieldIdList)
           AND v.cStatus = 'A'
@@ -51,26 +50,75 @@ try {
                 AND uwv.iUserID  = $userId
                 AND uwv.cStatus  = 'A'
           )
-        LIMIT 80
-    ");
+    "));
+    $total = (int)($countRow['total'] ?? 0);
 
-    $candidateIds = [];
-    while ($row = sql_fetch_assoc($idResult)) {
-        $candidateIds[] = (int) $row['iVideoID'];
+    if ($total === 0) {
+        echo json_encode(["statusCode" => 200, "data" => ["videos" => [], "total" => 0]]);
+        exit;
     }
+
+    // 3. Pick 4 random OFFSETs spread across the full eligible range
+    //    Each jump fetches 2 rows  →  4 × 2 = 8 candidates from different spots
+    //    LIMIT 2 OFFSET N on an indexed query = instant, MySQL skips to N via index
+    $jumps      = 4;
+    $perJump    = 2;
+    $offsets    = [];
+    $attempts   = 0;
+    $maxOffset  = max(0, $total - $perJump);
+
+    while (count($offsets) < $jumps && $attempts < 30) {
+        $o = rand(0, $maxOffset);
+        // Keep offsets at least 10 apart so we don't land on the same creator twice
+        $tooClose = false;
+        foreach ($offsets as $existing) {
+            if (abs($o - $existing) < 10) {
+                $tooClose = true;
+                break;
+            }
+        }
+        if (!$tooClose) $offsets[] = $o;
+        $attempts++;
+    }
+    // Safety: fill remaining slots without the spacing constraint if needed
+    while (count($offsets) < $jumps) {
+        $offsets[] = rand(0, $maxOffset);
+    }
+
+    // 4. Fetch IDs at each random offset — IDs only, no heavy joins
+    $candidateIds = [];
+    foreach ($offsets as $offset) {
+        $res = sql_query("
+            SELECT v.iVideoID
+            FROM videos v
+            WHERE v.iFieldID IN ($fieldIdList)
+              AND v.cStatus = 'A'
+              AND NOT EXISTS (
+                  SELECT 1 FROM user_watched_video uwv
+                  WHERE uwv.iVideoID = v.iVideoID
+                    AND uwv.iUserID  = $userId
+                    AND uwv.cStatus  = 'A'
+              )
+            LIMIT $perJump OFFSET $offset
+        ");
+        while ($row = sql_fetch_assoc($res)) {
+            $candidateIds[] = (int) $row['iVideoID'];
+        }
+    }
+
+    $candidateIds = array_values(array_unique($candidateIds));
 
     if (empty($candidateIds)) {
         echo json_encode(["statusCode" => 200, "data" => ["videos" => [], "total" => 0]]);
         exit;
     }
 
-    // 3. Shuffle in PHP (free) and pick 8 random IDs from across the pool
+    // 5. Final shuffle + pick 8
     shuffle($candidateIds);
     $picked     = array_slice($candidateIds, 0, 8);
     $pickedList = implode(',', $picked);
 
-    // 4. Fetch full video data for only those 8 rows (8 PK lookups = instant)
-    //    Counts via correlated subqueries — only run on 8 rows, no join explosion
+    // 6. Fetch full video data for exactly those rows — PK lookups, instant
     $videoResult = sql_query("
         SELECT
             v.*,
@@ -96,7 +144,6 @@ try {
         $videos[] = $row;
     }
 
-    // 5. Re-shuffle so IN() clause order doesn't cluster results
     shuffle($videos);
 
     echo json_encode(["statusCode" => 200, "data" => ["videos" => $videos, "total" => count($videos)]]);
